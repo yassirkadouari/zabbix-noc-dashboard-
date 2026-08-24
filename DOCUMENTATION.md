@@ -278,7 +278,7 @@ git status
 Si les modifications locales du titre ne sont plus necessaires, car le titre est maintenant configurable depuis l'interface, sauvegardez puis restaurez le fichier du commit courant :
 
 ```bash
-cp public/index.html public/index.html.conflit.bak
+cp public/index.html /tmp/index.html.conflit.bak
 git restore --source=HEAD --staged --worktree public/index.html
 git status
 ```
@@ -413,4 +413,3 @@ curl -s http://127.0.0.1:3100/api/status | jq
 git pull --ff-only origin main
 sudo ./deploy/update.sh
 ```
-

@@ -41,7 +41,7 @@ if ! sudo -u "$source_owner" git -C "$source_dir" diff --quiet -- || ! sudo -u "
 fi
 
 sudo -u "$source_owner" git -C "$source_dir" pull --ff-only
-tar --exclude='.env' --exclude='node_modules' --exclude='.git' --exclude='image.png' -C "$source_dir" -cf - . | tar -C "$install_dir" -xf -
+sudo -u "$source_owner" git -C "$source_dir" archive --format=tar HEAD | tar -C "$install_dir" -xf -
 chown -R "$service_user:$service_user" "$install_dir"
 chmod 0600 "$install_dir/.env"
 npm ci --omit=dev --prefix "$install_dir"
