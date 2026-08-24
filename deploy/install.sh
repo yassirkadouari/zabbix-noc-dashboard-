@@ -16,7 +16,7 @@ done
 
 if [ -e "$install_dir" ] && [ "$(find "$install_dir" -mindepth 1 -maxdepth 1 -print -quit)" ]; then
   echo "Installation existante: $install_dir" >&2
-  echo "Mettez a jour ce depot avec Git, puis relancez le script apres avoir verifie son contenu." >&2
+  echo "Pour une mise a jour sans ecraser .env, lancez: sudo ./deploy/update.sh" >&2
   exit 1
 fi
 

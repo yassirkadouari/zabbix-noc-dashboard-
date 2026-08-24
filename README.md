@@ -70,4 +70,12 @@ sudo ./deploy/install.sh
 
 Renseignez ensuite le jeton dans `/opt/zabbix-noc-dashboard/.env`, puis lancez `sudo systemctl start noc-zabbix`.
 
+Pour une mise a jour ulterieure, depuis un clone a jour du depot, lancez :
+
+```bash
+sudo ./deploy/update.sh
+```
+
+Le script conserve `.env`, verifie l'adresse du depot avant le telechargement, met a jour les dependances et redemarre le service.
+
 Ajoutez ensuite `deploy/noc-kiosk.sh` aux applications lancees a l'ouverture de session graphique du poste NOC. Le navigateur s'ouvre directement sur le tableau de bord, sans barre d'adresse ni controles.
