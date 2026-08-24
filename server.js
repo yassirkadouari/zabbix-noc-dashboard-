@@ -135,6 +135,7 @@ function normalizedProblem(trigger, hostGroups) {
   const lastChange = Number(trigger.lastchange) * 1000;
   return {
     id: trigger.triggerid,
+    hostid: host.hostid,
     host: host.name || host.host || 'Equipement inconnu',
     trigger: trigger.description,
     priority: Number(trigger.priority),
@@ -157,13 +158,29 @@ async function loadHostGroups(triggers) {
 
 async function problemResult(triggers, groups) {
   const hostGroups = await loadHostGroups(triggers);
-  const problems = triggers.filter(isIcmpProblem).map((trigger) => normalizedProblem(trigger, hostGroups));
+  const uniqueByHost = new Map();
+  for (const trigger of triggers.filter(isIcmpProblem)) {
+    const problem = normalizedProblem(trigger, hostGroups);
+    const existing = uniqueByHost.get(problem.hostid);
+    if (!existing || problem.priority > existing.priority || problem.lastChange > existing.lastChange) {
+      uniqueByHost.set(problem.hostid, problem);
+    }
+  }
+  const problems = [...uniqueByHost.values()].sort((first, second) => (
+    second.priority - first.priority || String(second.lastChange).localeCompare(String(first.lastChange))
+  ));
+  const problemsByGroup = new Map(groups.map((group) => [group.groupid, []]));
+  for (const problem of problems) {
+    // The configured group order is the deterministic tie-breaker for multi-group hosts.
+    const selectedGroup = groups.find((group) => problem.groupids.includes(group.groupid));
+    if (selectedGroup) problemsByGroup.get(selectedGroup.groupid).push(problem);
+  }
   return {
     problems,
     groups: groups.map((group) => ({
       id: group.groupid,
       name: group.name,
-      problems: problems.filter((problem) => problem.groupids.includes(group.groupid)),
+      problems: problemsByGroup.get(group.groupid),
     })),
     diagnostics: {
       activeTriggers: triggers.length,

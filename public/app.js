@@ -50,7 +50,13 @@ function severity(priority) {
 }
 
 function renderProblems(problems) {
-  if (!problems.length) return '<div class="card-ok"><span class="card-ok-dot"></span><div><strong>Operationnel</strong><span>Aucune panne ICMP</span></div></div>';
+  if (!problems.length) {
+    return `
+      <div class="card-ok">
+        <span class="health-ring"><span>OK</span></span>
+        <div><strong>Tout est stable</strong><span>Aucune perte ICMP detectee</span></div>
+      </div>`;
+  }
   return `<ul class="equipment-list">${problems.map((problem) => `
     <li class="equipment-item ${severity(problem.priority)}${problem.simulated ? ' simulated' : ''}">
       <div class="equipment-name">${escapeHtml(problem.host)}${problem.simulated ? '<span class="test-badge">TEST</span>' : ''}</div>
@@ -71,14 +77,15 @@ function render() {
         <article class="group-card${group.problems.length ? ' has-problems' : ''}">
           <header class="group-card-header">
             <div>
-              <p>Groupe Zabbix</p>
+              <p>${group.problems.length ? 'Disponibilite degradee' : 'Disponibilite normale'}</p>
               <h2>${escapeHtml(group.name)}</h2>
             </div>
             <div class="group-status">
-              <strong class="group-count">${group.problems.length}</strong>
-              <span>${group.problems.length ? 'Pannes' : 'RAS'}</span>
+              <strong class="group-count">${String(group.problems.length).padStart(2, '0')}</strong>
+              <span>${group.problems.length ? 'Alertes' : 'Stable'}</span>
             </div>
           </header>
+          <div class="card-state"><span class="state-indicator"></span>${group.problems.length ? 'Equipements injoignables' : 'Surveillance ICMP active'}</div>
           <div class="group-card-body">${renderProblems(group.problems)}</div>
         </article>`).join('')}
     </div>`;
