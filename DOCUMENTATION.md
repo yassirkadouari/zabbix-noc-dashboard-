@@ -269,6 +269,8 @@ Le script :
 - conserve `dashboard.local.json` ;
 - reinstalle les dependances et redemarre le service.
 
+Si `registry.npmjs.org` retourne temporairement `503 Service Unavailable`, les scripts verifient `node_modules` dans le clone avec `npm ls`, puis reutilisent cette copie locale complete. Le dashboard peut ainsi etre reinstalle sans attendre le retour du registre npm lorsque les dependances sont deja presentes et valides dans le clone.
+
 ### Conflit `public/index.html needs merge`
 
 Commencez toujours par :
@@ -376,6 +378,15 @@ sudo systemctl status noc-zabbix --no-pager
 sudo journalctl -u noc-zabbix -n 100 --no-pager
 sudo -u nocdashboard /usr/bin/node --check /opt/zabbix-noc-dashboard/server.js
 ```
+
+Si `systemctl` repond `Unit noc-zabbix.service could not be found`, l'installation systeme n'est pas terminee. Depuis un clone a jour contenant deja un `node_modules` fonctionnel :
+
+```bash
+git pull --ff-only origin main
+sudo ./deploy/update.sh
+```
+
+Le script recree l'unite systemd, l'active et redemarre le service. Si `/opt/zabbix-noc-dashboard` n'existe plus du tout, utilisez `sudo ./deploy/install.sh` puis renseignez de nouveau `/opt/zabbix-noc-dashboard/.env`.
 
 ### Le port est deja utilise
 
