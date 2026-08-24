@@ -51,7 +51,7 @@ Sur le PC du travail, clonez le depot puis installez-le ainsi :
 
 ```bash
 sudo useradd --system --home-dir /opt/zabbix-noc-dashboard --shell /usr/sbin/nologin nocdashboard
-sudo git clone https://github.com/VOTRE_COMPTE/zabbix-noc-dashboard.git /opt/zabbix-noc-dashboard
+sudo git clone https://github.com/yassirkadouari/zabbix-noc-dashboard.git /opt/zabbix-noc-dashboard
 sudo cp /opt/zabbix-noc-dashboard/.env.example /opt/zabbix-noc-dashboard/.env
 sudo chown -R nocdashboard:nocdashboard /opt/zabbix-noc-dashboard
 sudo chmod 600 /opt/zabbix-noc-dashboard/.env
