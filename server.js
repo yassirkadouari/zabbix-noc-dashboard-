@@ -7,7 +7,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 
 const app = express();
-const port = Number(process.env.PORT || 3000);
+const port = Number(process.env.PORT || 3100);
 const host = process.env.HOST || '127.0.0.1';
 const apiUrl = process.env.ZABBIX_API_URL || 'https://172.16.132.86/api_jsonrpc.php';
 const pollIntervalMs = Math.max(5, Number(process.env.POLL_INTERVAL_SECONDS || 45)) * 1000;

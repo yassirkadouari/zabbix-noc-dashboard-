@@ -34,6 +34,8 @@ Fichiers importants :
 - `/var/lib/noc-zabbix-dashboard/dashboard.local.json` : configuration enregistree depuis l'interface ;
 - `deploy/` : installation, mise a jour, service systemd et mode kiosque.
 
+Le port unique du projet est `3100`. Le serveur utilise aussi `3100` par defaut si la variable `PORT` est absente.
+
 ## 3. Prerequis
 
 - Ubuntu ou distribution Linux avec systemd ;
