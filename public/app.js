@@ -1,9 +1,6 @@
 const POLL_MS = 30_000;
-const PAGE_MS = 12_000;
-const GROUPS_PER_PAGE = 5;
 
 let allGroups = [];
-let page = 0;
 
 const content = document.querySelector('#content');
 const count = document.querySelector('#problem-count');
@@ -53,7 +50,7 @@ function severity(priority) {
 }
 
 function renderProblems(problems) {
-  if (!problems.length) return '<div class="card-ok"><span class="card-ok-dot"></span>Aucune panne ICMP</div>';
+  if (!problems.length) return '<div class="card-ok"><span class="card-ok-dot"></span><div><strong>Operationnel</strong><span>Aucune panne ICMP</span></div></div>';
   return `<ul class="equipment-list">${problems.map((problem) => `
     <li class="equipment-item ${severity(problem.priority)}${problem.simulated ? ' simulated' : ''}">
       <div class="equipment-name">${escapeHtml(problem.host)}${problem.simulated ? '<span class="test-badge">TEST</span>' : ''}</div>
@@ -63,30 +60,28 @@ function renderProblems(problems) {
 }
 
 function render() {
-  const pages = Math.max(1, Math.ceil(allGroups.length / GROUPS_PER_PAGE));
-  page %= pages;
-  const visibleGroups = allGroups.slice(page * GROUPS_PER_PAGE, (page + 1) * GROUPS_PER_PAGE);
-
-  if (!visibleGroups.length) {
+  if (!allGroups.length) {
     content.innerHTML = '<div class="error-state"><h2>Aucun groupe configure</h2><p>Definissez ZABBIX_HOST_GROUPS dans le fichier .env.</p></div>';
     return;
   }
 
   content.innerHTML = `
     <div class="group-grid">
-      ${visibleGroups.map((group) => `
+      ${allGroups.map((group) => `
         <article class="group-card${group.problems.length ? ' has-problems' : ''}">
           <header class="group-card-header">
             <div>
               <p>Groupe Zabbix</p>
               <h2>${escapeHtml(group.name)}</h2>
             </div>
-            <strong class="group-count">${group.problems.length}</strong>
+            <div class="group-status">
+              <strong class="group-count">${group.problems.length}</strong>
+              <span>${group.problems.length ? 'Pannes' : 'RAS'}</span>
+            </div>
           </header>
           <div class="group-card-body">${renderProblems(group.problems)}</div>
         </article>`).join('')}
-    </div>
-    ${pages > 1 ? `<div class="pager">Groupes ${page * GROUPS_PER_PAGE + 1}-${Math.min((page + 1) * GROUPS_PER_PAGE, allGroups.length)} / ${allGroups.length}</div>` : ''}`;
+    </div>`;
 }
 
 function escapeHtml(value) {
@@ -127,10 +122,6 @@ function tickClock() {
   }).format(new Date());
 }
 
-window.setInterval(() => {
-  page += 1;
-  render();
-}, PAGE_MS);
 window.setInterval(load, POLL_MS);
 window.setInterval(tickClock, 1000);
 

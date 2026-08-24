@@ -279,7 +279,7 @@ app.use(helmet({
 }));
 app.use(express.static('public', {
   extensions: ['html'],
-  setHeaders: (response) => response.setHeader('Cache-Control', 'public, max-age=3600, immutable'),
+  setHeaders: (response) => response.setHeader('Cache-Control', 'no-cache'),
 }));
 
 const apiRateLimit = rateLimit({
