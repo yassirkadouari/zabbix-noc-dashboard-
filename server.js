@@ -142,6 +142,29 @@ function normalizedProblem(trigger) {
   };
 }
 
+function problemResult(triggers) {
+  const problems = triggers.filter(isIcmpProblem).map(normalizedProblem);
+  return {
+    problems,
+    diagnostics: {
+      activeTriggers: triggers.length,
+      activeIcmpTriggers: problems.length,
+    },
+  };
+}
+
+function addSimulation(problems) {
+  if (process.env.NOC_TEST_MODE !== 'true') return problems;
+  return [{
+    id: 'noc-simulation-icmp',
+    host: 'NOC-TEST-ICMP',
+    trigger: 'SIMULATION - Equipement injoignable par ICMP',
+    priority: 4,
+    lastChange: new Date().toISOString(),
+    simulated: true,
+  }, ...problems];
+}
+
 async function loadProblems() {
   requireCredentials();
   await authenticate();
@@ -172,22 +195,23 @@ async function loadProblems() {
 
   try {
     const triggers = await rpc('trigger.get', params);
-    return triggers.filter(isIcmpProblem).map(normalizedProblem);
+    return problemResult(triggers);
   } catch (error) {
     // Some older Zabbix versions accept only one sort field.
     if (!String(error.message).includes('sortfield')) throw error;
     params.sortfield = 'priority';
     const triggers = await rpc('trigger.get', params);
-    return triggers.filter(isIcmpProblem).map(normalizedProblem);
+    return problemResult(triggers);
   }
 }
 
 async function refresh() {
   if (cache.fetching) return cache.fetching;
   cache.fetching = loadProblems()
-    .then((problems) => {
+    .then(({ problems, diagnostics }) => {
       cache.data = {
-        problems,
+        problems: addSimulation(problems),
+        diagnostics: { ...diagnostics, simulationEnabled: process.env.NOC_TEST_MODE === 'true' },
         groupFilter: configuredGroups,
         fetchedAt: new Date().toISOString(),
       };

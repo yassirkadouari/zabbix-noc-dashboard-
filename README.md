@@ -37,7 +37,20 @@ chmod 600 .env
 
 L'usage de HTTP est bloque par defaut. Si une migration HTTPS est vraiment impossible, activez explicitement `ZABBIX_ALLOW_INSECURE_HTTP=true`; ce choix expose le trafic et doit rester exceptionnel.
 
+Lorsque Zabbix Web et le dashboard sont sur le meme PC et que Zabbix est expose par Docker sur le port `8080`, la connexion reste locale au poste. Utilisez alors :
+
+```dotenv
+ZABBIX_API_URL=http://127.0.0.1:8080/api_jsonrpc.php
+ZABBIX_ALLOW_INSECURE_HTTP=true
+```
+
+N'utilisez jamais cette exception avec une adresse IP distante.
+
 Le filtre de groupes est configurable avec `ZABBIX_HOST_GROUPS`. Laissez cette valeur vide pour voir tous les hôtes Zabbix ayant une panne ICMP.
+
+## Simulation sans risque
+
+Pour verifier l'ecran sans creer de panne sur le reseau, definissez temporairement `NOC_TEST_MODE=true` dans `.env`, redemarrez le service, puis ouvrez le dashboard. Une ligne rouge en pointilles avec le badge `TEST` apparait. Cette simulation confirme l'affichage et l'actualisation, mais ne remplace pas un test de trigger Zabbix. Remettez immediatement `NOC_TEST_MODE=false` apres le test.
 
 ## Personnalisation de l'ecran
 
@@ -47,19 +60,14 @@ Modifiez `dashboard.config.json`, puis redemarrez le service. Les blocs de l'en-
 
 Le dossier `deploy/` contient un service systemd pour lancer l'application au demarrage et un script pour ouvrir Chromium en mode kiosque. Le service est volontairement execute par le compte local dedie `nocdashboard`, depuis `/opt/zabbix-noc-dashboard`.
 
-Sur le PC du travail, clonez le depot puis installez-le ainsi :
+Sur le PC du travail, clonez le depot puis lancez l'installateur :
 
 ```bash
-sudo useradd --system --home-dir /opt/zabbix-noc-dashboard --shell /usr/sbin/nologin nocdashboard
-sudo git clone https://github.com/yassirkadouari/zabbix-noc-dashboard-.git /opt/zabbix-noc-dashboard
-sudo cp /opt/zabbix-noc-dashboard/.env.example /opt/zabbix-noc-dashboard/.env
-sudo chown -R nocdashboard:nocdashboard /opt/zabbix-noc-dashboard
-sudo chmod 600 /opt/zabbix-noc-dashboard/.env
-sudo cp /opt/zabbix-noc-dashboard/deploy/noc-zabbix.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now noc-zabbix
+git clone https://github.com/yassirkadouari/zabbix-noc-dashboard-.git
+cd zabbix-noc-dashboard
+sudo ./deploy/install.sh
 ```
 
-Renseignez ensuite le jeton dans `/opt/zabbix-noc-dashboard/.env` et relancez `sudo systemctl restart noc-zabbix`.
+Renseignez ensuite le jeton dans `/opt/zabbix-noc-dashboard/.env`, puis lancez `sudo systemctl start noc-zabbix`.
 
 Ajoutez ensuite `deploy/noc-kiosk.sh` aux applications lancees a l'ouverture de session graphique du poste NOC. Le navigateur s'ouvre directement sur le tableau de bord, sans barre d'adresse ni controles.

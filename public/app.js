@@ -70,11 +70,12 @@ function render() {
 
   const rows = visible.map((problem) => {
     const [className, label] = severity(problem.priority);
+    const testBadge = problem.simulated ? '<span class="test-badge">TEST</span>' : '';
     return `
-      <article class="problem-row ${className}">
+      <article class="problem-row ${className}${problem.simulated ? ' simulated' : ''}">
         <div class="severity" aria-label="Gravite ${label}"></div>
         <div class="equipment">
-          <h2>${escapeHtml(problem.host)}</h2>
+          <h2>${escapeHtml(problem.host)}${testBadge}</h2>
           <p>${escapeHtml(problem.trigger)}</p>
         </div>
         <div class="duration">

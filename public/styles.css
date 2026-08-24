@@ -64,6 +64,8 @@ body { margin: 0; min-width: 320px; min-height: 100vh; }
 .warning .severity { background: #ffbf69; }
 .info .severity { background: #5ec5ee; }
 .equipment h2 { margin: 0; color: #ffffff; font-size: clamp(23px, 2vw, 34px); line-height: 1.15; letter-spacing: 0; overflow-wrap: anywhere; }
+.test-badge { display: inline-block; margin-left: 12px; padding: 3px 8px; border: 1px solid #ffbf69; border-radius: 3px; color: #ffdfad; font-size: 13px; font-weight: 700; line-height: 1.1; vertical-align: middle; }
+.simulated { border-style: dashed; }
 .equipment p { margin-top: 6px; font-size: clamp(14px, 1.15vw, 18px); overflow-wrap: anywhere; }
 .duration { text-align: right; }
 .duration strong { display: block; color: #ffffff; font-size: clamp(18px, 1.55vw, 25px); line-height: 1.2; }
