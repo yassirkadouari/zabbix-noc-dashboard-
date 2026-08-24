@@ -1,0 +1,6 @@
+{
+  "eyebrow": "NOC · Zabbix · disponibilite reseau",
+  "title": "Supervision ICMP",
+  "headerOrder": ["brand", "summary", "connection"],
+  "footerOrder": ["scope", "updatedAt", "clock"]
+}

@@ -1,0 +1,38 @@
+[Unit]
+Description=Tableau de bord NOC Zabbix ICMP
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=nocdashboard
+Group=nocdashboard
+WorkingDirectory=/opt/zabbix-noc-dashboard
+EnvironmentFile=/opt/zabbix-noc-dashboard/.env
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node /opt/zabbix-noc-dashboard/server.js
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectKernelLogs=true
+ProtectClock=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+LockPersonality=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallArchitectures=native
+UMask=0077
+IPAddressDeny=any
+IPAddressAllow=127.0.0.1
+IPAddressAllow=172.16.132.86
+
+[Install]
+WantedBy=multi-user.target

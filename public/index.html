@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#101820" />
+    <title>Supervision reseau</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="dashboard" aria-live="polite">
+      <header id="topbar" class="topbar">
+        <section class="brand" data-slot="brand" aria-label="Titre du tableau de bord">
+          <p id="eyebrow" class="eyebrow">NOC · Zabbix · disponibilite reseau</p>
+          <h1 id="dashboard-title">Supervision ICMP</h1>
+        </section>
+        <section class="summary" data-slot="summary" aria-label="Nombre de pannes">
+          <span class="summary-label">Equipements injoignables</span>
+          <strong id="problem-count">--</strong>
+        </section>
+        <section class="connection" data-slot="connection" aria-label="Etat de connexion Zabbix">
+          <span id="connection-dot" class="dot"></span>
+          <span id="connection-text">Connexion a Zabbix...</span>
+        </section>
+      </header>
+
+      <section id="content" class="content" aria-label="Liste des pannes ICMP">
+        <div class="loading">Lecture des alertes Zabbix...</div>
+      </section>
+
+      <footer id="footer" class="footer">
+        <span id="scope" data-slot="scope">Groupes : Switches, AP</span>
+        <span id="updated-at" data-slot="updatedAt">Mise a jour : --</span>
+        <span id="clock" data-slot="clock">--:--</span>
+      </footer>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>
