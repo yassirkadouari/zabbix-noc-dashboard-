@@ -130,7 +130,7 @@ function isIcmpProblem(trigger) {
   return trigger.items?.some((item) => /(^|[.])icmpping(?:$|[.[])/i.test(item.key_));
 }
 
-function normalizedProblem(trigger) {
+function normalizedProblem(trigger, hostGroups) {
   const host = trigger.hosts?.[0] || {};
   const lastChange = Number(trigger.lastchange) * 1000;
   return {
@@ -139,13 +139,32 @@ function normalizedProblem(trigger) {
     trigger: trigger.description,
     priority: Number(trigger.priority),
     lastChange: Number.isFinite(lastChange) ? new Date(lastChange).toISOString() : null,
+    groupids: hostGroups.get(host.hostid) || [],
   };
 }
 
-function problemResult(triggers) {
-  const problems = triggers.filter(isIcmpProblem).map(normalizedProblem);
+async function loadHostGroups(triggers) {
+  const hostids = [...new Set(triggers.flatMap((trigger) => trigger.hosts?.map((host) => host.hostid) || []))];
+  if (!hostids.length) return new Map();
+
+  const hosts = await rpc('host.get', {
+    output: ['hostid'],
+    hostids,
+    selectGroups: ['groupid'],
+  });
+  return new Map(hosts.map((host) => [host.hostid, host.groups?.map((group) => group.groupid) || []]));
+}
+
+async function problemResult(triggers, groups) {
+  const hostGroups = await loadHostGroups(triggers);
+  const problems = triggers.filter(isIcmpProblem).map((trigger) => normalizedProblem(trigger, hostGroups));
   return {
     problems,
+    groups: groups.map((group) => ({
+      id: group.groupid,
+      name: group.name,
+      problems: problems.filter((problem) => problem.groupids.includes(group.groupid)),
+    })),
     diagnostics: {
       activeTriggers: triggers.length,
       activeIcmpTriggers: problems.length,
@@ -153,32 +172,37 @@ function problemResult(triggers) {
   };
 }
 
-function addSimulation(problems) {
-  if (process.env.NOC_TEST_MODE !== 'true') return problems;
-  return [{
+function addSimulation(result) {
+  if (process.env.NOC_TEST_MODE !== 'true') return result;
+  const simulatedProblem = {
     id: 'noc-simulation-icmp',
     host: 'NOC-TEST-ICMP',
     trigger: 'SIMULATION - Equipement injoignable par ICMP',
     priority: 4,
     lastChange: new Date().toISOString(),
     simulated: true,
-  }, ...problems];
+  };
+  const targetGroup = result.groups.find((group) => group.name.toLowerCase() === 'test') || result.groups[0];
+  const groups = result.groups.map((group) => (
+    group.id === targetGroup?.id ? { ...group, problems: [simulatedProblem, ...group.problems] } : group
+  ));
+  return { ...result, problems: [simulatedProblem, ...result.problems], groups };
 }
 
 async function loadProblems() {
   requireCredentials();
   await authenticate();
 
-  let groupids;
+  let groups = [];
   if (configuredGroups.length) {
-    const groups = await rpc('hostgroup.get', {
+    const matchedGroups = await rpc('hostgroup.get', {
       output: ['groupid', 'name'],
       filter: { name: configuredGroups },
     });
-    if (!groups.length) {
+    if (!matchedGroups.length) {
       throw new Error(`Aucun groupe Zabbix trouve pour : ${configuredGroups.join(', ')}.`);
     }
-    groupids = groups.map((group) => group.groupid);
+    groups = configuredGroups.map((name) => matchedGroups.find((group) => group.name === name)).filter(Boolean);
   }
 
   const params = {
@@ -191,26 +215,28 @@ async function loadProblems() {
     sortfield: ['priority', 'lastchange'],
     sortorder: 'DESC',
   };
-  if (groupids) params.groupids = groupids;
+  if (groups.length) params.groupids = groups.map((group) => group.groupid);
 
   try {
     const triggers = await rpc('trigger.get', params);
-    return problemResult(triggers);
+    return problemResult(triggers, groups);
   } catch (error) {
     // Some older Zabbix versions accept only one sort field.
     if (!String(error.message).includes('sortfield')) throw error;
     params.sortfield = 'priority';
     const triggers = await rpc('trigger.get', params);
-    return problemResult(triggers);
+    return problemResult(triggers, groups);
   }
 }
 
 async function refresh() {
   if (cache.fetching) return cache.fetching;
   cache.fetching = loadProblems()
-    .then(({ problems, diagnostics }) => {
+    .then((result) => {
+      const { problems, groups, diagnostics } = addSimulation(result);
       cache.data = {
-        problems: addSimulation(problems),
+        problems,
+        groups,
         diagnostics: { ...diagnostics, simulationEnabled: process.env.NOC_TEST_MODE === 'true' },
         groupFilter: configuredGroups,
         fetchedAt: new Date().toISOString(),

@@ -1,10 +1,9 @@
 const POLL_MS = 30_000;
 const PAGE_MS = 12_000;
-const PAGE_SIZE = 8;
+const GROUPS_PER_PAGE = 5;
 
-let allProblems = [];
+let allGroups = [];
 let page = 0;
-let pageTimer;
 
 const content = document.querySelector('#content');
 const count = document.querySelector('#problem-count');
@@ -40,52 +39,54 @@ function formatTime(value) {
 function elapsed(value) {
   const minutes = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 60_000));
   if (minutes < 1) return 'A l’instant';
-  if (minutes < 60) return `Depuis ${minutes} min`;
+  if (minutes < 60) return `${minutes} min`;
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
-  return `Depuis ${hours} h${rest ? ` ${rest} min` : ''}`;
+  return `${hours} h${rest ? ` ${rest} min` : ''}`;
 }
 
 function severity(priority) {
-  if (priority >= 4) return ['critical', 'Critique'];
-  if (priority === 3) return ['high', 'Elevee'];
-  if (priority === 2) return ['warning', 'Moyenne'];
-  return ['info', 'Information'];
+  if (priority >= 4) return 'critical';
+  if (priority === 3) return 'high';
+  if (priority === 2) return 'warning';
+  return 'info';
+}
+
+function renderProblems(problems) {
+  if (!problems.length) return '<div class="card-ok"><span class="card-ok-dot"></span>Aucune panne ICMP</div>';
+  return `<ul class="equipment-list">${problems.map((problem) => `
+    <li class="equipment-item ${severity(problem.priority)}${problem.simulated ? ' simulated' : ''}">
+      <div class="equipment-name">${escapeHtml(problem.host)}${problem.simulated ? '<span class="test-badge">TEST</span>' : ''}</div>
+      <div class="equipment-detail">${escapeHtml(problem.trigger)}</div>
+      <div class="equipment-age">${elapsed(problem.lastChange)} · ${formatTime(problem.lastChange)}</div>
+    </li>`).join('')}</ul>`;
 }
 
 function render() {
-  const pages = Math.max(1, Math.ceil(allProblems.length / PAGE_SIZE));
+  const pages = Math.max(1, Math.ceil(allGroups.length / GROUPS_PER_PAGE));
   page %= pages;
-  const visible = allProblems.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const visibleGroups = allGroups.slice(page * GROUPS_PER_PAGE, (page + 1) * GROUPS_PER_PAGE);
 
-  if (!visible.length) {
-    content.innerHTML = `
-      <div class="healthy-state">
-        <div class="healthy-mark" aria-hidden="true">✓</div>
-        <h2>Aucune panne ICMP</h2>
-        <p>Tous les equipements surveilles repondent actuellement.</p>
-      </div>`;
+  if (!visibleGroups.length) {
+    content.innerHTML = '<div class="error-state"><h2>Aucun groupe configure</h2><p>Definissez ZABBIX_HOST_GROUPS dans le fichier .env.</p></div>';
     return;
   }
 
-  const rows = visible.map((problem) => {
-    const [className, label] = severity(problem.priority);
-    const testBadge = problem.simulated ? '<span class="test-badge">TEST</span>' : '';
-    return `
-      <article class="problem-row ${className}${problem.simulated ? ' simulated' : ''}">
-        <div class="severity" aria-label="Gravite ${label}"></div>
-        <div class="equipment">
-          <h2>${escapeHtml(problem.host)}${testBadge}</h2>
-          <p>${escapeHtml(problem.trigger)}</p>
-        </div>
-        <div class="duration">
-          <strong>${elapsed(problem.lastChange)}</strong>
-          <span>${formatTime(problem.lastChange)}</span>
-        </div>
-      </article>`;
-  }).join('');
-
-  content.innerHTML = `<div class="problems">${rows}</div>${pages > 1 ? `<div class="pager">Page ${page + 1} / ${pages}</div>` : ''}`;
+  content.innerHTML = `
+    <div class="group-grid">
+      ${visibleGroups.map((group) => `
+        <article class="group-card${group.problems.length ? ' has-problems' : ''}">
+          <header class="group-card-header">
+            <div>
+              <p>Groupe Zabbix</p>
+              <h2>${escapeHtml(group.name)}</h2>
+            </div>
+            <strong class="group-count">${group.problems.length}</strong>
+          </header>
+          <div class="group-card-body">${renderProblems(group.problems)}</div>
+        </article>`).join('')}
+    </div>
+    ${pages > 1 ? `<div class="pager">Groupes ${page * GROUPS_PER_PAGE + 1}-${Math.min((page + 1) * GROUPS_PER_PAGE, allGroups.length)} / ${allGroups.length}</div>` : ''}`;
 }
 
 function escapeHtml(value) {
@@ -107,9 +108,9 @@ async function load() {
     if (!data) throw new Error(payload.error || 'Aucune donnee disponible.');
 
     applyDashboardConfig(payload.dashboard);
-    allProblems = data.problems;
-    count.textContent = allProblems.length;
-    scope.textContent = `Groupes : ${data.groupFilter.length ? data.groupFilter.join(', ') : 'tous'}`;
+    allGroups = data.groups || [];
+    count.textContent = data.problems.length;
+    scope.textContent = `${allGroups.length} groupes surveilles`;
     updatedAt.textContent = `Mise a jour : ${formatTime(data.fetchedAt)}`;
     setConnection(payload.ok, payload.ok ? 'Zabbix connecte' : 'Dernieres donnees affichees');
     render();
