@@ -241,26 +241,33 @@ async function loadProblems() {
   };
   if (groups.length) params.groupids = groups.map((group) => group.groupid);
 
+  let triggers;
   try {
-    const triggers = await rpc('trigger.get', params);
-    return problemResult(triggers, groups);
+    triggers = await rpc('trigger.get', params);
   } catch (error) {
     // Some older Zabbix versions accept only one sort field.
     if (!String(error.message).includes('sortfield')) throw error;
     params.sortfield = 'priority';
-    const triggers = await rpc('trigger.get', params);
-    return problemResult(triggers, groups);
+    triggers = await rpc('trigger.get', params);
   }
+
+  const result = await problemResult(triggers, groups);
+  try {
+    const latency = await loadLatencyForGroups(groups);
+    const latencyByGroup = new Map(latency.groups.map((group) => [group.id, group]));
+    result.groups = result.groups.map((group) => ({ ...group, ...latencyByGroup.get(group.id) }));
+  } catch (error) {
+    console.error(`Lecture de latence indisponible pour la vue incidents: ${error.message}`);
+    result.groups = result.groups.map((group) => ({ ...group, averageMs: null, respondingHosts: null, totalHosts: null }));
+  }
+  return result;
 }
 
 function roundMilliseconds(value) {
   return Math.round(value * 10) / 10;
 }
 
-async function loadLatency() {
-  requireCredentials();
-  await authenticate();
-  const groups = await loadConfiguredGroups();
+async function loadLatencyForGroups(groups) {
   const groupids = groups.map((group) => group.groupid);
   const hosts = await rpc('host.get', {
     output: ['hostid', 'name', 'host'],
@@ -322,6 +329,12 @@ async function loadLatency() {
     }),
     fetchedAt: new Date().toISOString(),
   };
+}
+
+async function loadLatency() {
+  requireCredentials();
+  await authenticate();
+  return loadLatencyForGroups(await loadConfiguredGroups());
 }
 
 async function refresh() {

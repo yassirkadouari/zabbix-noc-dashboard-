@@ -78,8 +78,12 @@ body { min-width: 320px; min-height: 100vh; margin: 0; }
 .group-status { display: grid; justify-items: center; gap: 5px; min-width: 51px; color: var(--status-light); font-size: 10px; font-weight: 800; line-height: 1; text-transform: uppercase; }
 .group-count { display: grid; place-items: center; width: 48px; height: 48px; border: 2px solid var(--status); border-radius: 50%; color: var(--status-light); font-size: 19px; line-height: 1; font-variant-numeric: tabular-nums; }
 
-.card-state { display: flex; align-items: center; gap: 8px; min-height: 39px; padding: 9px clamp(16px, 1.55vw, 27px); border-top: 1px solid var(--card-edge); border-bottom: 1px solid var(--card-edge); color: #b8c8ca; }
+.card-state { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 51px; padding: 8px clamp(16px, 1.55vw, 27px); border-top: 1px solid var(--card-edge); border-bottom: 1px solid var(--card-edge); color: #b8c8ca; }
+.availability { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .state-indicator { width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; background: var(--status); }
+.group-latency { display: grid; justify-items: end; flex: 0 0 auto; color: var(--status-light); line-height: 1; }
+.group-latency small { color: #9aadb2; font-size: 9px; font-weight: 800; }
+.group-latency strong { margin-top: 3px; color: #f1f7f6; font-size: clamp(12px, .95vw, 16px); font-variant-numeric: tabular-nums; }
 
 .group-card-body { min-height: 0; overflow: auto; padding: clamp(16px, 1.55vw, 27px); }
 .card-ok { display: flex; align-items: center; gap: 14px; min-height: 100%; }

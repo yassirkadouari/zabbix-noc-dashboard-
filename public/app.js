@@ -49,6 +49,10 @@ function severity(priority) {
   return 'info';
 }
 
+function formatLatency(value) {
+  return value === null || value === undefined ? '--' : `${value.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} ms`;
+}
+
 function renderProblems(problems) {
   if (!problems.length) {
     return `
@@ -85,7 +89,10 @@ function render() {
               <span>${group.problems.length ? 'Alertes' : 'Stable'}</span>
             </div>
           </header>
-          <div class="card-state"><span class="state-indicator"></span>${group.problems.length ? 'Equipements injoignables' : 'Surveillance ICMP active'}</div>
+          <div class="card-state">
+            <span class="availability"><span class="state-indicator"></span>${group.problems.length ? 'Equipements injoignables' : 'Surveillance ICMP active'}</span>
+            <span class="group-latency"><small>LATENCE MOY.</small><strong>${formatLatency(group.averageMs)}</strong></span>
+          </div>
           <div class="group-card-body">${renderProblems(group.problems)}</div>
         </article>`).join('')}
     </div>`;
