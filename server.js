@@ -18,7 +18,7 @@ const dashboardConfigPath = path.join(process.cwd(), 'dashboard.config.json');
 
 const defaultDashboardConfig = Object.freeze({
   eyebrow: "CENTRE D'OPERATIONS RESEAU",
-  title: 'NOC',
+  title: 'NOC, TC3-TCR',
   headerOrder: ['brand', 'summary', 'connection'],
   footerOrder: ['scope', 'updatedAt', 'clock'],
 });
