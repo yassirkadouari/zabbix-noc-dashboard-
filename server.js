@@ -11,6 +11,9 @@ const port = Number(process.env.PORT || 3000);
 const host = process.env.HOST || '127.0.0.1';
 const apiUrl = process.env.ZABBIX_API_URL || 'https://172.16.132.86/api_jsonrpc.php';
 const pollIntervalMs = Math.max(5, Number(process.env.POLL_INTERVAL_SECONDS || 45)) * 1000;
+const requestedWebStaleSeconds = Number(process.env.WEB_STATUS_STALE_SECONDS || 180);
+const webStatusStaleSeconds = Number.isFinite(requestedWebStaleSeconds) && requestedWebStaleSeconds >= 60
+  ? requestedWebStaleSeconds : 180;
 const fallbackGroups = (process.env.ZABBIX_HOST_GROUPS || 'Switches,AP')
   .split(',')
   .map((name) => name.trim())
@@ -329,11 +332,118 @@ async function loadProblems() {
     console.error(`Lecture de latence indisponible pour la vue incidents: ${error.message}`);
     result.groups = result.groups.map((group) => ({ ...group, averageMs: null, respondingHosts: null, totalHosts: null }));
   }
+  try {
+    const webServices = await loadWebServicesForGroups(groups, panels);
+    const servicesByGroup = new Map(webServices.groups.map((group) => [group.id, group.services]));
+    result.groups = result.groups.map((group) => ({ ...group, services: servicesByGroup.get(group.id) || [] }));
+    result.diagnostics.monitoredWebServices = webServices.total;
+    result.diagnostics.downWebServices = webServices.down;
+  } catch (error) {
+    console.error(`Lecture des services web indisponible: ${error.message}`);
+    result.groups = result.groups.map((group) => ({ ...group, services: [] }));
+    result.diagnostics.monitoredWebServices = 0;
+    result.diagnostics.downWebServices = 0;
+  }
   return result;
 }
 
 function roundMilliseconds(value) {
   return Math.round(value * 10) / 10;
+}
+
+function zabbixKeyArguments(key, prefix) {
+  if (!key.startsWith(`${prefix}[`) || !key.endsWith(']')) return [];
+  const source = key.slice(prefix.length + 1, -1);
+  const values = [];
+  let current = '';
+  let quoted = false;
+  let escaped = false;
+  for (const character of source) {
+    if (escaped) {
+      current += character;
+      escaped = false;
+    } else if (character === '\\' && quoted) {
+      escaped = true;
+    } else if (character === '"') {
+      quoted = !quoted;
+    } else if (character === ',' && !quoted) {
+      values.push(current.trim());
+      current = '';
+    } else {
+      current += character;
+    }
+  }
+  values.push(current.trim());
+  return values;
+}
+
+async function loadWebServicesForGroups(groups, panels) {
+  const hosts = await rpc('host.get', {
+    output: ['hostid', 'name', 'host'],
+    groupids: groups.map((group) => group.groupid),
+    filter: { status: 0 },
+    selectGroups: ['groupid'],
+  });
+  const hostById = new Map(hosts.map((host) => [host.hostid, host]));
+  const panelByHost = new Map();
+  for (const currentHost of hosts) {
+    const panel = panels.find((candidate) => currentHost.groups?.some((hostGroup) => candidate.groupids.includes(hostGroup.groupid)));
+    if (panel) panelByHost.set(currentHost.hostid, panel.id);
+  }
+
+  const commonParams = {
+    output: ['itemid', 'hostid', 'name', 'key_', 'lastvalue', 'lastclock', 'state', 'status'],
+    hostids: hosts.map((currentHost) => currentHost.hostid),
+    monitored: true,
+    searchWildcardsEnabled: false,
+  };
+  const [failureItems, responseItems] = hosts.length ? await Promise.all([
+    rpc('item.get', { ...commonParams, search: { key_: 'web.test.fail[' } }),
+    rpc('item.get', { ...commonParams, search: { key_: 'web.test.rspcode[' } }),
+  ]) : [[], []];
+
+  const latestResponseByScenario = new Map();
+  for (const item of responseItems) {
+    const [scenario] = zabbixKeyArguments(item.key_, 'web.test.rspcode');
+    if (!scenario) continue;
+    const serviceKey = `${item.hostid}:${scenario}`;
+    const existing = latestResponseByScenario.get(serviceKey);
+    if (!existing || Number(item.lastclock) > Number(existing.lastclock)) latestResponseByScenario.set(serviceKey, item);
+  }
+
+  const servicesByPanel = new Map(panels.map((panel) => [panel.id, []]));
+  for (const item of failureItems) {
+    const [scenario] = zabbixKeyArguments(item.key_, 'web.test.fail');
+    const panelId = panelByHost.get(item.hostid);
+    const currentHost = hostById.get(item.hostid);
+    if (!scenario || !panelId || !currentHost) continue;
+    const lastClockSeconds = Number(item.lastclock);
+    const fresh = Number.isFinite(lastClockSeconds) && lastClockSeconds > 0
+      && (Date.now() / 1000) - lastClockSeconds <= webStatusStaleSeconds;
+    const supported = Number(item.state) === 0 && fresh;
+    const status = supported ? (Number(item.lastvalue) === 0 ? 'up' : 'down') : 'unknown';
+    const responseItem = latestResponseByScenario.get(`${item.hostid}:${scenario}`);
+    const responseCode = responseItem && Number(responseItem.lastclock) >= lastClockSeconds ? Number(responseItem.lastvalue) : null;
+    servicesByPanel.get(panelId).push({
+      id: item.itemid,
+      name: scenario,
+      host: currentHost.name || currentHost.host,
+      status,
+      responseCode: Number.isFinite(responseCode) ? responseCode : null,
+      lastCheck: supported ? new Date(lastClockSeconds * 1000).toISOString() : null,
+    });
+  }
+
+  const panelGroups = panels.map((panel) => ({
+    id: panel.id,
+    services: servicesByPanel.get(panel.id).sort((first, second) => first.name.localeCompare(second.name, 'fr')),
+  }));
+  const services = panelGroups.flatMap((group) => group.services);
+  return {
+    groups: panelGroups,
+    total: services.length,
+    down: services.filter((service) => service.status === 'down').length,
+  };
 }
 
 async function loadLatencyForGroups(groups, panels) {

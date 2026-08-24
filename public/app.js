@@ -62,19 +62,18 @@ function formatLatency(value) {
   return value === null || value === undefined ? '--' : `${value.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} ms`;
 }
 
+function alertsPerPage(group) {
+  return group.services?.length ? 2 : ALERTS_PER_PAGE;
+}
+
 function renderProblems(group) {
   const problems = group.problems;
-  if (!problems.length) {
-    return `
-      <div class="card-ok">
-        <span class="health-ring"><span>OK</span></span>
-        <div><strong>Tout est stable</strong><span>Aucune perte ICMP detectee</span></div>
-      </div>`;
-  }
-  const pageCount = Math.ceil(problems.length / ALERTS_PER_PAGE);
+  if (!problems.length) return '';
+  const pageSize = alertsPerPage(group);
+  const pageCount = Math.ceil(problems.length / pageSize);
   const pageIndex = (alertPageByGroup.get(group.id) || 0) % pageCount;
-  const pageStart = pageIndex * ALERTS_PER_PAGE;
-  const visibleProblems = problems.slice(pageStart, pageStart + ALERTS_PER_PAGE);
+  const pageStart = pageIndex * pageSize;
+  const visibleProblems = problems.slice(pageStart, pageStart + pageSize);
   const rotationStatus = pageCount > 1
     ? `<div class="rotation-status"><span class="rotation-pulse"></span>Rotation automatique</div><span>${pageIndex + 1} / ${pageCount}</span>`
     : '';
@@ -90,6 +89,41 @@ function renderProblems(group) {
   </div>`;
 }
 
+function renderServices(services = []) {
+  if (!services.length) return '';
+  return `<div class="service-list">${services.map((service) => {
+    const statusLabel = service.status === 'up' ? 'EN LIGNE' : service.status === 'down' ? 'HORS LIGNE' : 'ETAT INCONNU';
+    const responseCode = service.responseCode === null ? 'HTTP --' : `HTTP ${service.responseCode}`;
+    return `<div class="service-monitor ${service.status}">
+      <span class="service-signal"><span></span></span>
+      <div class="service-copy">
+        <small>SERVICE WEB</small>
+        <strong>${escapeHtml(service.name)}</strong>
+        <span>${responseCode} · Controle : ${formatTime(service.lastCheck)}</span>
+      </div>
+      <b>${statusLabel}</b>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function renderGroupBody(group) {
+  const services = renderServices(group.services);
+  const problems = renderProblems(group);
+  if (services || problems) return `<div class="group-body-content">${services}${problems}</div>`;
+  return `
+    <div class="card-ok">
+      <span class="health-ring"><span>OK</span></span>
+      <div><strong>Tout est stable</strong><span>Aucune perte ICMP detectee</span></div>
+    </div>`;
+}
+
+function groupState(group) {
+  const downServices = (group.services || []).filter((service) => service.status === 'down').length;
+  const unknownServices = (group.services || []).filter((service) => service.status === 'unknown').length;
+  const alertCount = group.problems.length + downServices;
+  return { alertCount, downServices, unknownServices, degraded: alertCount > 0 };
+}
+
 function render() {
   if (!allGroups.length) {
     content.innerHTML = '<div class="error-state"><h2>Aucun groupe configure</h2><p>Verifiez la configuration des groupes.</p></div>';
@@ -98,31 +132,35 @@ function render() {
 
   content.innerHTML = `
     <div class="group-grid">
-      ${allGroups.map((group) => `
-        <article class="group-card${group.problems.length ? ' has-problems' : ''}">
+      ${allGroups.map((group) => {
+        const state = groupState(group);
+        const hasServices = Boolean(group.services?.length);
+        return `
+        <article class="group-card${state.degraded ? ' has-problems' : ''}${!state.degraded && state.unknownServices ? ' has-unknown' : ''}">
           <header class="group-card-header">
             <div>
-              <p>${group.problems.length ? 'Disponibilite degradee' : 'Disponibilite normale'}</p>
+              <p>${state.degraded ? 'Disponibilite degradee' : state.unknownServices ? 'Surveillance partielle' : 'Disponibilite normale'}</p>
               <h2>${escapeHtml(group.name)}</h2>
             </div>
             <div class="group-status">
-              <strong class="group-count">${String(group.problems.length).padStart(2, '0')}</strong>
-              <span>${group.problems.length ? 'Alertes' : 'Stable'}</span>
+              <strong class="group-count">${String(state.alertCount).padStart(2, '0')}</strong>
+              <span>${state.alertCount ? 'Alertes' : state.unknownServices ? 'A verifier' : 'Stable'}</span>
             </div>
           </header>
           <div class="card-state">
-            <span class="availability"><span class="state-indicator"></span>${group.problems.length ? 'Equipements injoignables' : 'Surveillance ICMP active'}</span>
+            <span class="availability"><span class="state-indicator"></span>${state.degraded ? 'Alertes actives' : hasServices ? 'Web et ICMP surveilles' : 'Surveillance ICMP active'}</span>
             <span class="group-latency"><small>LATENCE MOY.</small><strong>${formatLatency(group.averageMs)}</strong></span>
           </div>
-          <div class="group-card-body">${renderProblems(group)}</div>
-        </article>`).join('')}
+          <div class="group-card-body">${renderGroupBody(group)}</div>
+        </article>`;
+      }).join('')}
     </div>`;
 }
 
 function rotateAlertPages() {
   let shouldRender = false;
   for (const group of allGroups) {
-    const pageCount = Math.ceil(group.problems.length / ALERTS_PER_PAGE);
+    const pageCount = Math.ceil(group.problems.length / alertsPerPage(group));
     if (pageCount <= 1) continue;
     alertPageByGroup.set(group.id, ((alertPageByGroup.get(group.id) || 0) + 1) % pageCount);
     shouldRender = true;
@@ -152,8 +190,9 @@ async function load() {
     applyDashboardConfig(payload.dashboard);
     pollIntervalSeconds = payload.pollIntervalSeconds || pollIntervalSeconds;
     allGroups = data.groups || [];
-    count.textContent = data.problems.length;
-    scope.textContent = `${allGroups.length} groupes surveilles`;
+    const webServices = allGroups.flatMap((group) => group.services || []);
+    count.textContent = data.problems.length + webServices.filter((service) => service.status === 'down').length;
+    scope.textContent = `${allGroups.length} groupes · ${webServices.length} services web`;
     updatedAt.textContent = `Mise a jour : ${formatTime(data.fetchedAt)}`;
     setConnection(payload.ok, payload.ok ? 'Service connecte' : 'Dernieres donnees affichees');
     render();

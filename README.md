@@ -1,6 +1,6 @@
 # Tableau de bord ICMP Zabbix
 
-Ecran de supervision sans interaction: il liste les hôtes ayant un trigger actif sur un item `icmpping`, par défaut dans les groupes Zabbix `Switches` et `AP`.
+Ecran de supervision sans interaction: il liste les hôtes ayant un trigger actif sur un item `icmpping` et affiche en permanence l'etat des scenarios web presents dans les groupes surveilles.
 
 ## Vues NOC
 
@@ -10,6 +10,8 @@ Ecran de supervision sans interaction: il liste les hôtes ayant un trigger acti
 La vue latence utilise les items de cle `icmppingsec`. Assurez-vous que vos hôtes ont ce type d'item (le template Zabbix ICMP Ping le fournit habituellement).
 
 Pour une actualisation rapide, configurez `POLL_INTERVAL_SECONDS=5` dans `.env`, puis redemarrez le dashboard. Cette valeur controle la lecture de l'API Zabbix; la fraicheur des valeurs ICMP depend aussi de l'intervalle de controle de vos items Zabbix.
+
+Les scenarios Web Zabbix sont detectes automatiquement via leurs items `web.test.fail` et `web.test.rspcode`. Leur carte affiche toujours `EN LIGNE`, `HORS LIGNE` ou `ETAT INCONNU`, le code HTTP et l'heure du dernier controle. Un resultat age de plus de `WEB_STATUS_STALE_SECONDS` (180 secondes par defaut) est volontairement affiche comme inconnu pour ne jamais presenter une ancienne valeur comme disponible.
 
 ## Configuration depuis l'interface
 
@@ -40,7 +42,7 @@ Puis lancez l'ecran:
 npm start
 ```
 
-Ouvrez `http://localhost:3100` dans le navigateur du poste d'affichage et utilisez le mode plein ecran du navigateur. L'affichage consulte Zabbix toutes les 45 secondes et change de page toutes les 12 secondes lorsqu'il y a plus de huit pannes.
+Ouvrez `http://localhost:3100` dans le navigateur du poste d'affichage et utilisez le mode plein ecran du navigateur. L'affichage consulte Zabbix selon `POLL_INTERVAL_SECONDS`. Les listes de pannes changent automatiquement de page toutes les six secondes lorsque leur panneau contient plus d'equipements que l'espace disponible.
 
 ## Securite
 

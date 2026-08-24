@@ -77,6 +77,12 @@ body { min-width: 320px; min-height: 100vh; margin: 0; }
   box-shadow: inset 0 5px 0 var(--status), 0 15px 28px #00000036;
 }
 
+.group-card.has-unknown {
+  --status: #ffbd5d;
+  --status-light: #ffe3b3;
+  --card-edge: #876a3d;
+}
+
 .group-card-header { min-height: 112px; display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding: clamp(17px, 1.55vw, 27px) clamp(16px, 1.55vw, 27px) 15px; }
 .group-card-header p { margin-bottom: 8px; color: var(--status-light); font-size: 11px; text-transform: uppercase; }
 .group-card-header h2 { margin: 0; color: #ffffff; font-size: clamp(21px, 1.65vw, 32px); line-height: 1.03; letter-spacing: 0; overflow-wrap: anywhere; }
@@ -92,6 +98,7 @@ body { min-width: 320px; min-height: 100vh; margin: 0; }
 .group-latency strong { margin-top: 3px; color: #f2f7fb; font-size: clamp(12px, .95vw, 16px); font-variant-numeric: tabular-nums; }
 
 .group-card-body { min-height: 0; overflow: hidden; padding: clamp(17px, 1.55vw, 28px); }
+.group-body-content { min-height: 100%; display: grid; align-content: start; gap: 18px; }
 .card-ok { display: flex; align-items: center; gap: 14px; min-height: 100%; }
 .health-ring { display: grid; place-items: center; width: 48px; height: 48px; flex: 0 0 48px; border: 3px solid #2fc979; border-radius: 50%; color: #c5f8d6; font-size: 11px; font-weight: 850; }
 .card-ok strong { display: block; color: #d6fae0; font-size: clamp(17px, 1.22vw, 23px); line-height: 1.16; }
@@ -107,6 +114,27 @@ body { min-width: 320px; min-height: 100vh; margin: 0; }
 .equipment-age { margin-top: 7px; color: #9fb5c7; font-size: 11px; }
 .test-badge { display: inline-block; margin-left: 8px; padding: 3px 5px; border: 1px solid #ffbd5d; border-radius: 3px; color: #ffe3b3; font-size: 10px; line-height: 1; vertical-align: middle; }
 .simulated { border-left-style: dashed; }
+.service-list { display: grid; gap: 10px; }
+.service-monitor { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 13px; min-height: 92px; padding: 14px 16px; border: 1px solid #477795; border-left: 5px solid #6ca8c7; border-radius: 5px; background: #0d213a; }
+.service-monitor.up { border-color: #357b62; border-left-color: #2fc979; background: #102d32; }
+.service-monitor.down { border-color: #9d5961; border-left-color: #f1685d; background: #3b2029; }
+.service-monitor.unknown { border-color: #876a3d; border-left-color: #ffbd5d; background: #342c1d; }
+.service-signal { display: grid; place-items: center; width: 28px; height: 28px; border: 2px solid #6ca8c7; border-radius: 50%; }
+.service-signal span { width: 9px; height: 9px; border-radius: 50%; background: #6ca8c7; box-shadow: 0 0 0 5px #6ca8c724; }
+.service-monitor.up .service-signal { border-color: #78dea5; }
+.service-monitor.up .service-signal span { background: #2fc979; box-shadow: 0 0 0 5px #2fc97924; }
+.service-monitor.down .service-signal { border-color: #ffb1aa; }
+.service-monitor.down .service-signal span { background: #f1685d; box-shadow: 0 0 0 5px #f1685d24; }
+.service-monitor.unknown .service-signal { border-color: #ffe3b3; }
+.service-monitor.unknown .service-signal span { background: #ffbd5d; box-shadow: 0 0 0 5px #ffbd5d24; }
+.service-copy { min-width: 0; }
+.service-copy small { display: block; color: #9db4c7; font-size: 9px; font-weight: 850; }
+.service-copy strong { display: block; margin-top: 3px; color: #ffffff; font-size: clamp(15px, 1.12vw, 21px); line-height: 1.1; overflow-wrap: anywhere; }
+.service-copy span { display: block; margin-top: 7px; color: #bfd0dc; font-size: 11px; font-weight: 700; }
+.service-monitor b { color: #d2e7f1; font-size: 11px; line-height: 1.15; text-align: right; }
+.service-monitor.up b { color: #a8efc8; }
+.service-monitor.down b { color: #ffd0ca; }
+.service-monitor.unknown b { color: #ffe3b3; }
 .rotation-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 15px; padding-top: 11px; border-top: 1px solid var(--card-edge); color: #b9cad8; font-size: 10px; font-weight: 800; font-variant-numeric: tabular-nums; text-transform: uppercase; }
 .rotation-status { display: flex; align-items: center; gap: 8px; }
 .rotation-pulse { width: 7px; height: 7px; border-radius: 50%; background: #00a0db; box-shadow: 0 0 0 4px #00a0db24; }
