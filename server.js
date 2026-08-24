@@ -17,8 +17,8 @@ const configuredGroups = (process.env.ZABBIX_HOST_GROUPS || 'Switches,AP')
 const dashboardConfigPath = path.join(process.cwd(), 'dashboard.config.json');
 
 const defaultDashboardConfig = Object.freeze({
-  eyebrow: 'NOC · Zabbix · disponibilite reseau',
-  title: 'Supervision ICMP',
+  eyebrow: "CENTRE D'OPERATIONS RESEAU",
+  title: 'NOC',
   headerOrder: ['brand', 'summary', 'connection'],
   footerOrder: ['scope', 'updatedAt', 'clock'],
 });
@@ -427,7 +427,7 @@ app.get('/api/status', apiRateLimit, async (_request, response) => {
     response.setHeader('Cache-Control', 'no-store');
     response.status(503).json({
       ok: false,
-      error: 'La connexion securisee a Zabbix est indisponible. Consultez le journal du service NOC.',
+      error: 'La source de supervision est indisponible. Consultez le journal du service NOC.',
       previousData: cache.data,
       dashboard: dashboardConfig,
       pollIntervalSeconds: pollIntervalMs / 1000,
@@ -445,7 +445,7 @@ app.get('/api/latency', apiRateLimit, async (_request, response) => {
     response.setHeader('Cache-Control', 'no-store');
     response.status(503).json({
       ok: false,
-      error: 'La lecture de la latence Zabbix est indisponible. Consultez le journal du service NOC.',
+      error: 'La lecture de la latence est indisponible. Consultez le journal du service NOC.',
       previousData: latencyCache.data,
       dashboard: dashboardConfig,
       pollIntervalSeconds: pollIntervalMs / 1000,

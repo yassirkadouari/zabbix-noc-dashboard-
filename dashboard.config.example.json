@@ -1,6 +1,6 @@
 {
-  "eyebrow": "NOC · Site principal",
-  "title": "Alertes reseau ICMP",
+  "eyebrow": "CENTRE D'OPERATIONS RESEAU",
+  "title": "NOC",
   "headerOrder": ["summary", "brand", "connection"],
   "footerOrder": ["clock", "scope", "updatedAt"]
 }

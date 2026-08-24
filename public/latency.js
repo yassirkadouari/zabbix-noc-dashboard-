@@ -41,7 +41,7 @@ function applyBrand(config) {
 
 function render(groups) {
   if (!groups.length) {
-    content.innerHTML = '<div class="error-state"><h2>Aucun groupe configure</h2><p>Definissez ZABBIX_HOST_GROUPS dans le fichier .env.</p></div>';
+    content.innerHTML = '<div class="error-state"><h2>Aucun groupe configure</h2><p>Verifiez la configuration des groupes.</p></div>';
     return;
   }
 
@@ -52,7 +52,7 @@ function render(groups) {
     return `
       <article class="latency-card ${tone}">
         <header>
-          <p>Groupe Zabbix</p>
+          <p>Groupe reseau</p>
           <h2>${escapeHtml(group.name)}</h2>
           <span class="latency-state">${tone === 'healthy' ? 'Normal' : tone === 'warning' ? 'A surveiller' : tone === 'critical' ? 'Elevee' : 'Sans mesure'}</span>
         </header>
@@ -82,10 +82,10 @@ async function load() {
     globalAverage.textContent = overall === null ? '--' : `${overall.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} ms`;
     scope.textContent = `${data.groups.length} groupes surveilles`;
     updatedAt.textContent = `Mise a jour : ${formatTime(data.fetchedAt)}`;
-    setConnection(payload.ok, payload.ok ? 'Zabbix connecte' : 'Dernieres donnees affichees');
+    setConnection(payload.ok, payload.ok ? 'Service connecte' : 'Dernieres donnees affichees');
     render(data.groups);
   } catch (error) {
-    setConnection(false, 'Zabbix inaccessible');
+    setConnection(false, 'Service inaccessible');
     globalAverage.textContent = '--';
     content.innerHTML = `<div class="error-state"><h2>Connexion impossible</h2><p>${escapeHtml(error.message)}</p></div>`;
   } finally {

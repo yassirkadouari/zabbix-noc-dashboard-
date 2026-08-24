@@ -70,7 +70,7 @@ function renderProblems(problems) {
 
 function render() {
   if (!allGroups.length) {
-    content.innerHTML = '<div class="error-state"><h2>Aucun groupe configure</h2><p>Definissez ZABBIX_HOST_GROUPS dans le fichier .env.</p></div>';
+    content.innerHTML = '<div class="error-state"><h2>Aucun groupe configure</h2><p>Verifiez la configuration des groupes.</p></div>';
     return;
   }
 
@@ -122,10 +122,10 @@ async function load() {
     count.textContent = data.problems.length;
     scope.textContent = `${allGroups.length} groupes surveilles`;
     updatedAt.textContent = `Mise a jour : ${formatTime(data.fetchedAt)}`;
-    setConnection(payload.ok, payload.ok ? 'Zabbix connecte' : 'Dernieres donnees affichees');
+    setConnection(payload.ok, payload.ok ? 'Service connecte' : 'Dernieres donnees affichees');
     render();
   } catch (error) {
-    setConnection(false, 'Zabbix inaccessible');
+    setConnection(false, 'Service inaccessible');
     count.textContent = '--';
     content.innerHTML = `<div class="error-state"><h2>Connexion impossible</h2><p>${escapeHtml(error.message)}</p></div>`;
   } finally {
