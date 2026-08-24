@@ -1,11 +1,10 @@
-const POLL_MS = 30_000;
-
 const content = document.querySelector('#content');
 const dot = document.querySelector('#connection-dot');
 const connectionText = document.querySelector('#connection-text');
 const globalAverage = document.querySelector('#global-average');
 const scope = document.querySelector('#scope');
 const updatedAt = document.querySelector('#updated-at');
+let pollTimer;
 
 function escapeHtml(value) {
   return String(value).replace(/[&<>'"]/g, (character) => ({
@@ -69,6 +68,7 @@ function render(groups) {
 }
 
 async function load() {
+  let pollIntervalSeconds = 30;
   try {
     const response = await fetch('/api/latency', { cache: 'no-store' });
     const payload = await response.json();
@@ -76,6 +76,7 @@ async function load() {
     if (!data) throw new Error(payload.error || 'Aucune donnee disponible.');
 
     applyBrand(payload.dashboard);
+    pollIntervalSeconds = payload.pollIntervalSeconds || pollIntervalSeconds;
     const averages = data.groups.map((group) => group.averageMs).filter((value) => value !== null);
     const overall = averages.length ? averages.reduce((sum, value) => sum + value, 0) / averages.length : null;
     globalAverage.textContent = overall === null ? '--' : `${overall.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} ms`;
@@ -87,6 +88,9 @@ async function load() {
     setConnection(false, 'Zabbix inaccessible');
     globalAverage.textContent = '--';
     content.innerHTML = `<div class="error-state"><h2>Connexion impossible</h2><p>${escapeHtml(error.message)}</p></div>`;
+  } finally {
+    clearTimeout(pollTimer);
+    pollTimer = window.setTimeout(load, Math.max(5, pollIntervalSeconds) * 1000);
   }
 }
 
@@ -96,7 +100,6 @@ function tickClock() {
   }).format(new Date());
 }
 
-window.setInterval(load, POLL_MS);
 window.setInterval(tickClock, 1000);
 tickClock();
 load();

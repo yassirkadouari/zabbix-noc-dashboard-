@@ -1,6 +1,5 @@
-const POLL_MS = 30_000;
-
 let allGroups = [];
+let pollTimer;
 
 const content = document.querySelector('#content');
 const count = document.querySelector('#problem-count');
@@ -110,6 +109,7 @@ function setConnection(ok, message) {
 }
 
 async function load() {
+  let pollIntervalSeconds = 30;
   try {
     const response = await fetch('/api/status', { cache: 'no-store' });
     const payload = await response.json();
@@ -117,6 +117,7 @@ async function load() {
     if (!data) throw new Error(payload.error || 'Aucune donnee disponible.');
 
     applyDashboardConfig(payload.dashboard);
+    pollIntervalSeconds = payload.pollIntervalSeconds || pollIntervalSeconds;
     allGroups = data.groups || [];
     count.textContent = data.problems.length;
     scope.textContent = `${allGroups.length} groupes surveilles`;
@@ -127,6 +128,9 @@ async function load() {
     setConnection(false, 'Zabbix inaccessible');
     count.textContent = '--';
     content.innerHTML = `<div class="error-state"><h2>Connexion impossible</h2><p>${escapeHtml(error.message)}</p></div>`;
+  } finally {
+    clearTimeout(pollTimer);
+    pollTimer = window.setTimeout(load, Math.max(5, pollIntervalSeconds) * 1000);
   }
 }
 
@@ -136,7 +140,6 @@ function tickClock() {
   }).format(new Date());
 }
 
-window.setInterval(load, POLL_MS);
 window.setInterval(tickClock, 1000);
 
 tickClock();

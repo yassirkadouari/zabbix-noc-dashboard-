@@ -9,7 +9,7 @@ const app = express();
 const port = Number(process.env.PORT || 3000);
 const host = process.env.HOST || '127.0.0.1';
 const apiUrl = process.env.ZABBIX_API_URL || 'https://172.16.132.86/api_jsonrpc.php';
-const pollIntervalMs = Math.max(15, Number(process.env.POLL_INTERVAL_SECONDS || 45)) * 1000;
+const pollIntervalMs = Math.max(5, Number(process.env.POLL_INTERVAL_SECONDS || 45)) * 1000;
 const configuredGroups = (process.env.ZABBIX_HOST_GROUPS || 'Switches,AP')
   .split(',')
   .map((name) => name.trim())

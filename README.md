@@ -9,6 +9,8 @@ Ecran de supervision sans interaction: il liste les hôtes ayant un trigger acti
 
 La vue latence utilise les items de cle `icmppingsec`. Assurez-vous que vos hôtes ont ce type d'item (le template Zabbix ICMP Ping le fournit habituellement).
 
+Pour une actualisation rapide, configurez `POLL_INTERVAL_SECONDS=5` dans `.env`, puis redemarrez le dashboard. Cette valeur controle la lecture de l'API Zabbix; la fraicheur des valeurs ICMP depend aussi de l'intervalle de controle de vos items Zabbix.
+
 ## Installation
 
 ```bash
