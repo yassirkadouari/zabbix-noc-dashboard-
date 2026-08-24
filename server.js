@@ -412,9 +412,7 @@ async function loadWebServicesForGroups(groups, panels) {
     output: ['itemid', 'hostid', 'name', 'key_', 'lastvalue', 'lastclock', 'state', 'status'],
     hostids: scenarioHostids,
     monitored: true,
-    search: { key_: 'web.test.' },
-    searchWildcardsEnabled: false,
-  }) : [];
+  }).then((hostItems) => hostItems.filter((item) => item.key_.startsWith('web.test.'))) : [];
 
   const servicesByPanel = new Map(panels.map((panel) => [panel.id, []]));
   for (const scenario of scenarios) {

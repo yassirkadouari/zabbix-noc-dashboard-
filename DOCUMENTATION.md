@@ -212,6 +212,8 @@ Affichez uniquement le diagnostic Web :
 curl -s http://127.0.0.1:3100/api/status | jq '{ok, diagnostics, services: [.groups[].services[]?]}'
 ```
 
+Tapez l'URL telle quelle dans le terminal. N'ajoutez pas les caracteres Markdown `[`, `]`, `(` ou `)` autour de l'adresse.
+
 Resultat normal :
 
 ```json
