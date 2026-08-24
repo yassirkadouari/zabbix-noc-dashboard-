@@ -77,6 +77,11 @@ let cache = {
   error: null,
   fetching: null,
 };
+let latencyCache = {
+  data: null,
+  updatedAt: null,
+  fetching: null,
+};
 
 function requireCredentials() {
   if (process.env.ZABBIX_API_TOKEN) return;
@@ -206,21 +211,23 @@ function addSimulation(result) {
   return { ...result, problems: [simulatedProblem, ...result.problems], groups };
 }
 
+async function loadConfiguredGroups() {
+  if (!configuredGroups.length) return [];
+  const matchedGroups = await rpc('hostgroup.get', {
+    output: ['groupid', 'name'],
+    filter: { name: configuredGroups },
+  });
+  if (!matchedGroups.length) {
+    throw new Error(`Aucun groupe Zabbix trouve pour : ${configuredGroups.join(', ')}.`);
+  }
+  return configuredGroups.map((name) => matchedGroups.find((group) => group.name === name)).filter(Boolean);
+}
+
 async function loadProblems() {
   requireCredentials();
   await authenticate();
 
-  let groups = [];
-  if (configuredGroups.length) {
-    const matchedGroups = await rpc('hostgroup.get', {
-      output: ['groupid', 'name'],
-      filter: { name: configuredGroups },
-    });
-    if (!matchedGroups.length) {
-      throw new Error(`Aucun groupe Zabbix trouve pour : ${configuredGroups.join(', ')}.`);
-    }
-    groups = configuredGroups.map((name) => matchedGroups.find((group) => group.name === name)).filter(Boolean);
-  }
+  const groups = await loadConfiguredGroups();
 
   const params = {
     output: ['triggerid', 'description', 'priority', 'lastchange'],
@@ -244,6 +251,77 @@ async function loadProblems() {
     const triggers = await rpc('trigger.get', params);
     return problemResult(triggers, groups);
   }
+}
+
+function roundMilliseconds(value) {
+  return Math.round(value * 10) / 10;
+}
+
+async function loadLatency() {
+  requireCredentials();
+  await authenticate();
+  const groups = await loadConfiguredGroups();
+  const groupids = groups.map((group) => group.groupid);
+  const hosts = await rpc('host.get', {
+    output: ['hostid', 'name', 'host'],
+    groupids,
+    filter: { status: 0 },
+    selectGroups: ['groupid'],
+  });
+  const hostsById = new Map(hosts.map((host) => [host.hostid, host]));
+  const hostsByGroup = new Map(groups.map((group) => [group.groupid, []]));
+
+  for (const host of hosts) {
+    const targetGroup = groups.find((group) => host.groups?.some((hostGroup) => hostGroup.groupid === group.groupid));
+    if (targetGroup) hostsByGroup.get(targetGroup.groupid).push(host.hostid);
+  }
+
+  const items = hosts.length ? await rpc('item.get', {
+    output: ['itemid', 'hostid', 'key_', 'lastvalue', 'lastclock', 'state', 'status'],
+    hostids: hosts.map((host) => host.hostid),
+    monitored: true,
+    search: { key_: 'icmppingsec' },
+    searchWildcardsEnabled: false,
+  }) : [];
+  const latestByHost = new Map();
+
+  for (const item of items) {
+    if (!/^icmppingsec(?:\[.*\])?$/i.test(item.key_)) continue;
+    const milliseconds = Number(item.lastvalue) * 1000;
+    if (!Number.isFinite(milliseconds) || !hostsById.has(item.hostid)) continue;
+    const existing = latestByHost.get(item.hostid);
+    if (!existing || Number(item.lastclock) > Number(existing.lastclock)) {
+      latestByHost.set(item.hostid, { milliseconds: roundMilliseconds(milliseconds), lastclock: item.lastclock });
+    }
+  }
+
+  return {
+    groups: groups.map((group) => {
+      const hostids = hostsByGroup.get(group.groupid);
+      const measurements = hostids.map((hostid) => ({ host: hostsById.get(hostid), ...latestByHost.get(hostid) })).filter((item) => item.milliseconds !== undefined);
+      const values = measurements.map((item) => item.milliseconds);
+      const averageMs = values.length ? roundMilliseconds(values.reduce((total, value) => total + value, 0) / values.length) : null;
+      return {
+        id: group.groupid,
+        name: group.name,
+        totalHosts: hostids.length,
+        respondingHosts: measurements.length,
+        averageMs,
+        minMs: values.length ? Math.min(...values) : null,
+        maxMs: values.length ? Math.max(...values) : null,
+        slowHosts: measurements.filter((item) => item.milliseconds >= 100).length,
+        hosts: measurements
+          .sort((first, second) => second.milliseconds - first.milliseconds)
+          .slice(0, 5)
+          .map((item) => ({
+            name: item.host.name || item.host.host,
+            milliseconds: item.milliseconds,
+            lastClock: Number(item.lastclock) * 1000,
+          })),
+      };
+    }),
+    fetchedAt: new Date().toISOString(),
+  };
 }
 
 async function refresh() {
@@ -272,6 +350,25 @@ async function refresh() {
       cache.fetching = null;
     });
   return cache.fetching;
+}
+
+async function refreshLatency() {
+  if (latencyCache.fetching) return latencyCache.fetching;
+  latencyCache.fetching = loadLatency()
+    .then((data) => {
+      latencyCache.data = data;
+      latencyCache.updatedAt = Date.now();
+      return data;
+    })
+    .catch((error) => {
+      legacyAuthToken = null;
+      console.error(`Echec de lecture de la latence Zabbix: ${error.message}`);
+      throw error;
+    })
+    .finally(() => {
+      latencyCache.fetching = null;
+    });
+  return latencyCache.fetching;
 }
 
 app.disable('x-powered-by');
@@ -319,6 +416,24 @@ app.get('/api/status', apiRateLimit, async (_request, response) => {
       ok: false,
       error: 'La connexion securisee a Zabbix est indisponible. Consultez le journal du service NOC.',
       previousData: cache.data,
+      dashboard: dashboardConfig,
+      pollIntervalSeconds: pollIntervalMs / 1000,
+    });
+  }
+});
+
+app.get('/api/latency', apiRateLimit, async (_request, response) => {
+  const stale = !latencyCache.updatedAt || Date.now() - latencyCache.updatedAt >= pollIntervalMs;
+  try {
+    const data = stale ? await refreshLatency() : latencyCache.data;
+    response.setHeader('Cache-Control', 'no-store');
+    response.json({ ok: true, ...data, dashboard: dashboardConfig, pollIntervalSeconds: pollIntervalMs / 1000 });
+  } catch {
+    response.setHeader('Cache-Control', 'no-store');
+    response.status(503).json({
+      ok: false,
+      error: 'La lecture de la latence Zabbix est indisponible. Consultez le journal du service NOC.',
+      previousData: latencyCache.data,
       dashboard: dashboardConfig,
       pollIntervalSeconds: pollIntervalMs / 1000,
     });

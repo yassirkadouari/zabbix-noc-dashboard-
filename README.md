@@ -2,6 +2,13 @@
 
 Ecran de supervision sans interaction: il liste les hôtes ayant un trigger actif sur un item `icmpping`, par défaut dans les groupes Zabbix `Switches` et `AP`.
 
+## Vues NOC
+
+- `http://127.0.0.1:3100/` : incidents ICMP, regroupes par groupe Zabbix.
+- `http://127.0.0.1:3100/latency` : latence ICMP par groupe, avec moyenne, minimum, maximum et les cinq hôtes les plus lents.
+
+La vue latence utilise les items de cle `icmppingsec`. Assurez-vous que vos hôtes ont ce type d'item (le template Zabbix ICMP Ping le fournit habituellement).
+
 ## Installation
 
 ```bash
