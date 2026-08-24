@@ -3,7 +3,7 @@
   "title": "NOC, TC3-TCR",
   "headerOrder": ["summary", "brand", "connection"],
   "footerOrder": ["clock", "scope", "updatedAt"],
-  "layoutColumns": 4,
+  "layoutColumns": 3,
   "panels": [
     { "title": "Switches", "groups": ["SWITCHE", "SW-TOUR"] },
     { "title": "Points d'acces", "groups": ["AP-DTV", "AP-TC3"] }

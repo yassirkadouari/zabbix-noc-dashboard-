@@ -37,7 +37,7 @@ function applyBrand(config) {
   if (!config) return;
   document.querySelector('#eyebrow').textContent = config.eyebrow;
   document.querySelector('#dashboard-title').textContent = `${config.title} · Latence`;
-  document.documentElement.style.setProperty('--latency-columns', String(config.layoutColumns || 5));
+  document.documentElement.style.setProperty('--latency-columns', String(Math.min(4, config.layoutColumns || 3)));
 }
 
 function render(groups) {

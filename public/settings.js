@@ -63,7 +63,7 @@ async function unlock() {
   hostGroups = groupsPayload.groups;
   document.querySelector('#title').value = config.title;
   document.querySelector('#eyebrow').value = config.eyebrow;
-  document.querySelector('#layout-columns').value = String(config.layoutColumns);
+  document.querySelector('#layout-columns').value = String(Math.min(4, config.layoutColumns || 3));
   unlockPanel.hidden = true;
   settingsForm.hidden = false;
   connectionState.textContent = 'Configuration ouverte';

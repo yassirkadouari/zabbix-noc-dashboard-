@@ -23,7 +23,7 @@ const defaultDashboardConfig = Object.freeze({
   title: 'NOC, TC3-TCR',
   headerOrder: ['brand', 'summary', 'connection'],
   footerOrder: ['scope', 'updatedAt', 'clock'],
-  layoutColumns: 5,
+  layoutColumns: 3,
   panels: [],
 });
 
@@ -57,7 +57,7 @@ function normalizeDashboardConfig(rawConfig) {
     title: textSetting(rawConfig?.title, defaultDashboardConfig.title),
     headerOrder: orderedSlots(rawConfig?.headerOrder, defaultDashboardConfig.headerOrder),
     footerOrder: orderedSlots(rawConfig?.footerOrder, defaultDashboardConfig.footerOrder),
-    layoutColumns: [2, 3, 4, 5].includes(Number(rawConfig?.layoutColumns)) ? Number(rawConfig.layoutColumns) : defaultDashboardConfig.layoutColumns,
+    layoutColumns: [2, 3, 4].includes(Number(rawConfig?.layoutColumns)) ? Number(rawConfig.layoutColumns) : defaultDashboardConfig.layoutColumns,
     panels: panelSettings(rawConfig?.panels),
   };
 }

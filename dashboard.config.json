@@ -3,6 +3,6 @@
   "title": "NOC, TC3-TCR",
   "headerOrder": ["brand", "summary", "connection"],
   "footerOrder": ["scope", "updatedAt", "clock"],
-  "layoutColumns": 5,
+  "layoutColumns": 3,
   "panels": []
 }

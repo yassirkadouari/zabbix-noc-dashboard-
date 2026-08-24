@@ -1,5 +1,8 @@
 let allGroups = [];
 let pollTimer;
+const alertPageByGroup = new Map();
+const ALERTS_PER_PAGE = 3;
+const ALERT_ROTATION_MS = 6000;
 
 const content = document.querySelector('#content');
 const count = document.querySelector('#problem-count');
@@ -10,10 +13,16 @@ const scope = document.querySelector('#scope');
 
 function applyDashboardConfig(config) {
   if (!config) return;
-  document.querySelector('#eyebrow').textContent = config.eyebrow;
-  document.querySelector('#dashboard-title').textContent = config.title;
-  document.title = config.title;
-  document.documentElement.style.setProperty('--group-columns', String(config.layoutColumns || 5));
+  const eyebrow = document.querySelector('#eyebrow');
+  const title = document.querySelector('#dashboard-title');
+  const titleText = config.title?.trim() || 'NOC TC3-TCR';
+  const eyebrowText = config.eyebrow?.trim() || '';
+  const comparableText = (value) => value.toLocaleLowerCase('fr').replace(/[^a-z0-9]/g, '');
+  eyebrow.textContent = eyebrowText;
+  title.textContent = titleText;
+  eyebrow.hidden = !eyebrowText || comparableText(eyebrowText) === comparableText(titleText);
+  document.title = titleText;
+  document.documentElement.style.setProperty('--group-columns', String(Math.min(4, config.layoutColumns || 3)));
   orderSlots(document.querySelector('#topbar'), config.headerOrder);
   orderSlots(document.querySelector('#footer'), config.footerOrder);
 }
@@ -53,7 +62,8 @@ function formatLatency(value) {
   return value === null || value === undefined ? '--' : `${value.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} ms`;
 }
 
-function renderProblems(problems) {
+function renderProblems(group) {
+  const problems = group.problems;
   if (!problems.length) {
     return `
       <div class="card-ok">
@@ -61,12 +71,23 @@ function renderProblems(problems) {
         <div><strong>Tout est stable</strong><span>Aucune perte ICMP detectee</span></div>
       </div>`;
   }
-  return `<ul class="equipment-list">${problems.map((problem) => `
+  const pageCount = Math.ceil(problems.length / ALERTS_PER_PAGE);
+  const pageIndex = (alertPageByGroup.get(group.id) || 0) % pageCount;
+  const pageStart = pageIndex * ALERTS_PER_PAGE;
+  const visibleProblems = problems.slice(pageStart, pageStart + ALERTS_PER_PAGE);
+  const rotationStatus = pageCount > 1
+    ? `<div class="rotation-status"><span class="rotation-pulse"></span>Rotation automatique</div><span>${pageIndex + 1} / ${pageCount}</span>`
+    : '';
+
+  return `<div class="equipment-page">
+    <ul class="equipment-list">${visibleProblems.map((problem) => `
     <li class="equipment-item ${severity(problem.priority)}${problem.simulated ? ' simulated' : ''}">
       <div class="equipment-name">${escapeHtml(problem.host)}${problem.simulated ? '<span class="test-badge">TEST</span>' : ''}</div>
       <div class="equipment-detail">${escapeHtml(problem.trigger)}</div>
       <div class="equipment-age">${elapsed(problem.lastChange)} · ${formatTime(problem.lastChange)}</div>
-    </li>`).join('')}</ul>`;
+    </li>`).join('')}</ul>
+    ${rotationStatus ? `<div class="rotation-meta">${rotationStatus}</div>` : ''}
+  </div>`;
 }
 
 function render() {
@@ -93,9 +114,20 @@ function render() {
             <span class="availability"><span class="state-indicator"></span>${group.problems.length ? 'Equipements injoignables' : 'Surveillance ICMP active'}</span>
             <span class="group-latency"><small>LATENCE MOY.</small><strong>${formatLatency(group.averageMs)}</strong></span>
           </div>
-          <div class="group-card-body">${renderProblems(group.problems)}</div>
+          <div class="group-card-body">${renderProblems(group)}</div>
         </article>`).join('')}
     </div>`;
+}
+
+function rotateAlertPages() {
+  let shouldRender = false;
+  for (const group of allGroups) {
+    const pageCount = Math.ceil(group.problems.length / ALERTS_PER_PAGE);
+    if (pageCount <= 1) continue;
+    alertPageByGroup.set(group.id, ((alertPageByGroup.get(group.id) || 0) + 1) % pageCount);
+    shouldRender = true;
+  }
+  if (shouldRender) render();
 }
 
 function escapeHtml(value) {
@@ -142,6 +174,7 @@ function tickClock() {
 }
 
 window.setInterval(tickClock, 1000);
+window.setInterval(rotateAlertPages, ALERT_ROTATION_MS);
 
 tickClock();
 load();

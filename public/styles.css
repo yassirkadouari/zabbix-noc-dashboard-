@@ -16,20 +16,22 @@ body { min-width: 320px; min-height: 100vh; margin: 0; }
 }
 
 .topbar {
-  min-height: 146px;
+  min-height: 120px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: clamp(26px, 4vw, 72px);
-  padding: 24px clamp(28px, 5vw, 90px);
+  padding: 10px clamp(24px, 3.2vw, 62px);
   border-bottom: 1px solid #93a5b7;
   background: #edf2f5;
   box-shadow: inset 0 -4px 0 #0088c4;
 }
 
 .brand { display: flex; min-width: 0; align-items: center; gap: clamp(16px, 2vw, 28px); }
-.marsa-logo { width: clamp(158px, 13vw, 222px); height: 100px; flex: 0 0 auto; object-fit: cover; object-position: center 54%; }
+.logo-frame { position: relative; width: clamp(168px, 11.5vw, 220px); aspect-ratio: 894 / 437; flex: 0 0 auto; overflow: hidden; }
+.marsa-logo { position: absolute; top: -125.8%; left: -35.9%; width: 171.8%; max-width: none; height: auto; }
 .brand-copy { min-width: 0; }
+[hidden] { display: none !important; }
 
 .eyebrow, .summary-label, .connection, .footer, .group-card-header p, .equipment-detail, .equipment-age, .card-state {
   margin: 0;
@@ -49,15 +51,15 @@ body { min-width: 320px; min-height: 100vh; margin: 0; }
 .dot { width: 13px; height: 13px; flex: 0 0 13px; border: 3px solid #b9f5d3; border-radius: 50%; background: #25bf76; box-shadow: 0 0 0 5px #25bf7629; }
 .dot.offline { border-color: #ffd0cc; background: #ee6357; box-shadow: 0 0 0 5px #ee635729; }
 
-.content { min-height: 0; padding: clamp(20px, 2.5vw, 48px) clamp(28px, 5vw, 90px); }
-.group-grid { display: grid; grid-template-columns: repeat(var(--group-columns, 5), minmax(0, 1fr)); gap: clamp(14px, 1.4vw, 26px); align-items: start; }
+.content { min-height: 0; display: grid; padding: clamp(14px, 1.7vw, 28px) clamp(18px, 2.8vw, 54px); }
+.group-grid { min-height: 0; display: grid; grid-template-columns: repeat(var(--group-columns, 3), minmax(0, 1fr)); grid-auto-rows: minmax(330px, 1fr); gap: clamp(14px, 1.3vw, 24px); align-items: stretch; }
 
 .group-card {
   --status: #2fc979;
   --status-light: #c5f8d6;
   --card: #102846;
   --card-edge: #315778;
-  aspect-ratio: 1 / 1;
+  min-height: 330px;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
   overflow: hidden;
@@ -89,13 +91,14 @@ body { min-width: 320px; min-height: 100vh; margin: 0; }
 .group-latency small { color: #9db4c7; font-size: 9px; font-weight: 800; }
 .group-latency strong { margin-top: 3px; color: #f2f7fb; font-size: clamp(12px, .95vw, 16px); font-variant-numeric: tabular-nums; }
 
-.group-card-body { min-height: 0; overflow: auto; padding: clamp(16px, 1.55vw, 27px); }
+.group-card-body { min-height: 0; overflow: hidden; padding: clamp(17px, 1.55vw, 28px); }
 .card-ok { display: flex; align-items: center; gap: 14px; min-height: 100%; }
 .health-ring { display: grid; place-items: center; width: 48px; height: 48px; flex: 0 0 48px; border: 3px solid #2fc979; border-radius: 50%; color: #c5f8d6; font-size: 11px; font-weight: 850; }
 .card-ok strong { display: block; color: #d6fae0; font-size: clamp(17px, 1.22vw, 23px); line-height: 1.16; }
 .card-ok > div > span { display: block; margin-top: 5px; color: #9db4b8; font-size: 12px; font-weight: 650; line-height: 1.3; }
 
 .equipment-list { display: grid; gap: 17px; margin: 0; padding: 0; list-style: none; }
+.equipment-page { min-height: 100%; display: grid; grid-template-rows: 1fr auto; animation: alert-page-in 320ms ease-out; }
 .equipment-item { padding: 1px 0 3px 13px; border-left: 4px solid #00a0db; }
 .equipment-item.high, .equipment-item.critical { border-left-color: #f1685d; }
 .equipment-item.warning { border-left-color: #ffbd5d; }
@@ -104,6 +107,14 @@ body { min-width: 320px; min-height: 100vh; margin: 0; }
 .equipment-age { margin-top: 7px; color: #9fb5c7; font-size: 11px; }
 .test-badge { display: inline-block; margin-left: 8px; padding: 3px 5px; border: 1px solid #ffbd5d; border-radius: 3px; color: #ffe3b3; font-size: 10px; line-height: 1; vertical-align: middle; }
 .simulated { border-left-style: dashed; }
+.rotation-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 15px; padding-top: 11px; border-top: 1px solid var(--card-edge); color: #b9cad8; font-size: 10px; font-weight: 800; font-variant-numeric: tabular-nums; text-transform: uppercase; }
+.rotation-status { display: flex; align-items: center; gap: 8px; }
+.rotation-pulse { width: 7px; height: 7px; border-radius: 50%; background: #00a0db; box-shadow: 0 0 0 4px #00a0db24; }
+
+@keyframes alert-page-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
 .error-state, .loading { min-height: 55vh; display: grid; place-content: center; justify-items: center; text-align: center; }
 .error-state h2 { margin: 18px 0 8px; color: #ffaba3; font-size: clamp(30px, 4vw, 56px); letter-spacing: 0; }
@@ -113,15 +124,15 @@ body { min-width: 320px; min-height: 100vh; margin: 0; }
 #clock { color: #f2f7fb; font-variant-numeric: tabular-nums; }
 
 @media (max-width: 1200px) {
-  .group-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .group-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 700px) {
   .topbar { min-height: 0; grid-template-columns: 1fr auto; gap: 18px; padding-block: 20px; }
-  .marsa-logo { width: 145px; height: 86px; }
+  .logo-frame { width: 145px; }
   .summary { min-width: 0; padding-right: 0; border-right: 0; }
   .summary strong { font-size: 45px; }
   .connection { grid-column: 1 / -1; justify-content: flex-start; }
-  .group-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .group-grid { grid-template-columns: 1fr; }
   .footer { align-items: flex-start; flex-direction: column; gap: 5px; }
 }

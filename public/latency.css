@@ -8,9 +8,10 @@
 * { box-sizing: border-box; }
 body { min-width: 320px; min-height: 100vh; margin: 0; }
 .latency-dashboard { min-height: 100vh; display: grid; grid-template-rows: auto 1fr auto; background: #08192e; }
-.topbar { min-height: 146px; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: clamp(26px, 4vw, 72px); padding: 24px clamp(28px, 5vw, 90px); border-bottom: 1px solid #93a5b7; background: #edf2f5; box-shadow: inset 0 -4px 0 #0088c4; }
+.topbar { min-height: 120px; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: clamp(26px, 4vw, 72px); padding: 10px clamp(24px, 3.2vw, 62px); border-bottom: 1px solid #93a5b7; background: #edf2f5; box-shadow: inset 0 -4px 0 #0088c4; }
 .brand { display: flex; min-width: 0; align-items: center; gap: clamp(16px, 2vw, 28px); }
-.marsa-logo { width: clamp(158px, 13vw, 222px); height: 100px; flex: 0 0 auto; object-fit: cover; object-position: center 54%; }
+.logo-frame { position: relative; width: clamp(168px, 11.5vw, 220px); aspect-ratio: 894 / 437; flex: 0 0 auto; overflow: hidden; }
+.marsa-logo { position: absolute; top: -125.8%; left: -35.9%; width: 171.8%; max-width: none; height: auto; }
 .brand-copy { min-width: 0; }
 .eyebrow, .summary-label, .connection, .footer, .latency-card header p, .slowest > p { margin: 0; font-size: 13px; font-weight: 700; letter-spacing: 0; }
 .eyebrow { color: #0088c4; text-transform: uppercase; }
@@ -51,4 +52,4 @@ body { min-width: 320px; min-height: 100vh; margin: 0; }
 .footer { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 55px; padding: 12px clamp(28px, 5vw, 90px); border-top: 1px solid #315778; color: #b9cad8; background: #0b203a; }
 #clock { color: #f2f7fb; font-variant-numeric: tabular-nums; }
 @media (max-width: 1200px) { .latency-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (max-width: 700px) { .topbar { min-height: 0; grid-template-columns: 1fr auto; gap: 18px; padding-block: 20px; } .marsa-logo { width: 145px; height: 86px; } .summary { min-width: 0; padding-right: 0; border-right: 0; } .summary strong { font-size: 45px; } .connection { grid-column: 1 / -1; justify-content: flex-start; } .latency-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .footer { align-items: flex-start; flex-direction: column; gap: 5px; } }
+@media (max-width: 700px) { .topbar { min-height: 0; grid-template-columns: 1fr auto; gap: 18px; padding-block: 20px; } .logo-frame { width: 145px; } .summary { min-width: 0; padding-right: 0; border-right: 0; } .summary strong { font-size: 45px; } .connection { grid-column: 1 / -1; justify-content: flex-start; } .latency-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .footer { align-items: flex-start; flex-direction: column; gap: 5px; } }
