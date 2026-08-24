@@ -10,6 +10,7 @@ Group=nocdashboard
 WorkingDirectory=/opt/zabbix-noc-dashboard
 EnvironmentFile=/opt/zabbix-noc-dashboard/.env
 Environment=NODE_ENV=production
+Environment=NOC_CONFIG_PATH=/var/lib/noc-zabbix-dashboard/dashboard.local.json
 ExecStart=/usr/bin/node /opt/zabbix-noc-dashboard/server.js
 Restart=always
 RestartSec=5
@@ -18,6 +19,7 @@ PrivateTmp=true
 PrivateDevices=true
 ProtectSystem=strict
 ProtectHome=read-only
+StateDirectory=noc-zabbix-dashboard
 ProtectControlGroups=true
 ProtectKernelModules=true
 ProtectKernelTunables=true

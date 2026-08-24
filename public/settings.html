@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b151b" />
+    <title>Configuration NOC</title>
+    <link rel="stylesheet" href="/settings.css?v=noc-settings-1" />
+  </head>
+  <body>
+    <main class="settings-shell">
+      <header class="settings-header">
+        <div>
+          <p>Configuration locale</p>
+          <h1>NOC, TC3-TCR</h1>
+        </div>
+        <span id="connection-state" class="connection-state">Verrouille</span>
+      </header>
+
+      <section id="unlock-panel" class="unlock-panel">
+        <h2>Acces administrateur</h2>
+        <p>Entrez le secret configure dans <code>NOC_ADMIN_TOKEN</code>.</p>
+        <form id="unlock-form">
+          <label for="admin-token">Secret d'administration</label>
+          <div class="token-row">
+            <input id="admin-token" type="password" autocomplete="current-password" required />
+            <button type="submit">Ouvrir la configuration</button>
+          </div>
+        </form>
+        <p id="unlock-error" class="form-error" role="alert"></p>
+      </section>
+
+      <form id="settings-form" class="settings-form" hidden>
+        <section class="settings-section identity-section">
+          <div class="section-heading"><p>Identite</p><h2>Habillage de l'ecran</h2></div>
+          <div class="field-grid">
+            <label>Titre<input id="title" maxlength="100" required /></label>
+            <label>Sous-titre<input id="eyebrow" maxlength="100" required /></label>
+            <label>Cartes par ligne
+              <select id="layout-columns"><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select>
+            </label>
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <div class="section-heading panels-heading">
+            <div><p>Disposition</p><h2>Panneaux de supervision</h2></div>
+            <button id="add-panel" type="button">Ajouter un panneau</button>
+          </div>
+          <p class="section-note">Glissez les panneaux pour modifier leur ordre. Un hôte qui appartient a plusieurs groupes est affiche dans le premier panneau correspondant.</p>
+          <div id="panels" class="panels" aria-live="polite"></div>
+        </section>
+
+        <footer class="save-bar">
+          <p id="save-status" role="status"></p>
+          <button class="save-button" type="submit">Enregistrer les changements</button>
+        </footer>
+      </form>
+    </main>
+    <script src="/settings.js?v=noc-settings-1"></script>
+  </body>
+</html>

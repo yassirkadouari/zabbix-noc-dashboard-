@@ -19,7 +19,7 @@ body { min-width: 320px; min-height: 100vh; margin: 0; }
 .dot { width: 13px; height: 13px; flex: 0 0 13px; border: 3px solid #b9f5d3; border-radius: 50%; background: #25bf76; box-shadow: 0 0 0 5px #25bf7629; }
 .dot.offline { border-color: #ffd0cc; background: #ee6357; box-shadow: 0 0 0 5px #ee635729; }
 .content { min-height: 0; padding: clamp(20px, 2.5vw, 48px) clamp(28px, 5vw, 90px); }
-.latency-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: clamp(14px, 1.4vw, 26px); align-items: start; }
+.latency-grid { display: grid; grid-template-columns: repeat(var(--latency-columns, 5), minmax(0, 1fr)); gap: clamp(14px, 1.4vw, 26px); align-items: start; }
 .latency-card { --tone: #2fc979; --tone-light: #c5f8d6; aspect-ratio: 1 / 1; display: grid; grid-template-rows: auto auto auto minmax(0, 1fr); overflow: hidden; border: 1px solid #355963; border-radius: 7px; background: #12242b; box-shadow: inset 0 5px 0 var(--tone), 0 12px 22px #0000001f; }
 .latency-card.warning { --tone: #ffbd5d; --tone-light: #ffe3b3; border-color: #876a3d; background: #282319; }
 .latency-card.critical { --tone: #f1685d; --tone-light: #ffd0ca; border-color: #8f4e4d; background: #281b20; }

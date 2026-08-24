@@ -46,7 +46,7 @@ body { min-width: 320px; min-height: 100vh; margin: 0; }
 .dot.offline { border-color: #ffd0cc; background: #ee6357; box-shadow: 0 0 0 5px #ee635729; }
 
 .content { min-height: 0; padding: clamp(20px, 2.5vw, 48px) clamp(28px, 5vw, 90px); }
-.group-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: clamp(14px, 1.4vw, 26px); align-items: start; }
+.group-grid { display: grid; grid-template-columns: repeat(var(--group-columns, 5), minmax(0, 1fr)); gap: clamp(14px, 1.4vw, 26px); align-items: start; }
 
 .group-card {
   --status: #2fc979;

@@ -13,6 +13,7 @@ function applyDashboardConfig(config) {
   document.querySelector('#eyebrow').textContent = config.eyebrow;
   document.querySelector('#dashboard-title').textContent = config.title;
   document.title = config.title;
+  document.documentElement.style.setProperty('--group-columns', String(config.layoutColumns || 5));
   orderSlots(document.querySelector('#topbar'), config.headerOrder);
   orderSlots(document.querySelector('#footer'), config.footerOrder);
 }

@@ -2,5 +2,10 @@
   "eyebrow": "CENTRE D'OPERATIONS RESEAU",
   "title": "NOC, TC3-TCR",
   "headerOrder": ["summary", "brand", "connection"],
-  "footerOrder": ["clock", "scope", "updatedAt"]
+  "footerOrder": ["clock", "scope", "updatedAt"],
+  "layoutColumns": 4,
+  "panels": [
+    { "title": "Switches", "groups": ["SWITCHE", "SW-TOUR"] },
+    { "title": "Points d'acces", "groups": ["AP-DTV", "AP-TC3"] }
+  ]
 }

@@ -2,5 +2,7 @@
   "eyebrow": "CENTRE D'OPERATIONS RESEAU",
   "title": "NOC, TC3-TCR",
   "headerOrder": ["brand", "summary", "connection"],
-  "footerOrder": ["scope", "updatedAt", "clock"]
+  "footerOrder": ["scope", "updatedAt", "clock"],
+  "layoutColumns": 5,
+  "panels": []
 }

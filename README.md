@@ -11,6 +11,16 @@ La vue latence utilise les items de cle `icmppingsec`. Assurez-vous que vos hôt
 
 Pour une actualisation rapide, configurez `POLL_INTERVAL_SECONDS=5` dans `.env`, puis redemarrez le dashboard. Cette valeur controle la lecture de l'API Zabbix; la fraicheur des valeurs ICMP depend aussi de l'intervalle de controle de vos items Zabbix.
 
+## Configuration depuis l'interface
+
+Definissez un secret long et aleatoire dans `.env` :
+
+```dotenv
+NOC_ADMIN_TOKEN=un-secret-long-et-unique
+```
+
+Redemarrez ensuite le service, puis ouvrez `http://127.0.0.1:3100/settings.html`. Cette interface permet de modifier le titre, le nombre de cartes par ligne, la disposition des panneaux et les host groups associes a chaque panneau. Les reglages sont sauvegardes localement et ne sont pas envoyes dans Git.
+
 ## Installation
 
 ```bash

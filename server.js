@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import express from 'express';
@@ -10,17 +11,20 @@ const port = Number(process.env.PORT || 3000);
 const host = process.env.HOST || '127.0.0.1';
 const apiUrl = process.env.ZABBIX_API_URL || 'https://172.16.132.86/api_jsonrpc.php';
 const pollIntervalMs = Math.max(5, Number(process.env.POLL_INTERVAL_SECONDS || 45)) * 1000;
-const configuredGroups = (process.env.ZABBIX_HOST_GROUPS || 'Switches,AP')
+const fallbackGroups = (process.env.ZABBIX_HOST_GROUPS || 'Switches,AP')
   .split(',')
   .map((name) => name.trim())
   .filter(Boolean);
 const dashboardConfigPath = path.join(process.cwd(), 'dashboard.config.json');
+const dashboardOverridePath = process.env.NOC_CONFIG_PATH || path.join(process.cwd(), 'dashboard.local.json');
 
 const defaultDashboardConfig = Object.freeze({
   eyebrow: "CENTRE D'OPERATIONS RESEAU",
   title: 'NOC, TC3-TCR',
   headerOrder: ['brand', 'summary', 'connection'],
   footerOrder: ['scope', 'updatedAt', 'clock'],
+  layoutColumns: 5,
+  panels: [],
 });
 
 function orderedSlots(value, permitted) {
@@ -33,22 +37,42 @@ function textSetting(value, fallback, maxLength = 100) {
   return typeof value === 'string' && value.trim() && value.length <= maxLength ? value.trim() : fallback;
 }
 
+function panelSettings(value) {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, 20).map((panel, index) => {
+    const groups = Array.isArray(panel?.groups) ? panel.groups
+      .filter((group) => typeof group === 'string' && group.trim() && group.length <= 120)
+      .map((group) => group.trim()) : [];
+    return {
+      id: `panel-${index + 1}`,
+      title: textSetting(panel?.title, `Groupe ${index + 1}`),
+      groups: [...new Set(groups)].slice(0, 40),
+    };
+  }).filter((panel) => panel.groups.length);
+}
+
+function normalizeDashboardConfig(rawConfig) {
+  return {
+    eyebrow: textSetting(rawConfig?.eyebrow, defaultDashboardConfig.eyebrow),
+    title: textSetting(rawConfig?.title, defaultDashboardConfig.title),
+    headerOrder: orderedSlots(rawConfig?.headerOrder, defaultDashboardConfig.headerOrder),
+    footerOrder: orderedSlots(rawConfig?.footerOrder, defaultDashboardConfig.footerOrder),
+    layoutColumns: [2, 3, 4, 5].includes(Number(rawConfig?.layoutColumns)) ? Number(rawConfig.layoutColumns) : defaultDashboardConfig.layoutColumns,
+    panels: panelSettings(rawConfig?.panels),
+  };
+}
+
 function loadDashboardConfig() {
   try {
-    const rawConfig = JSON.parse(fs.readFileSync(dashboardConfigPath, 'utf8'));
-    return {
-      eyebrow: textSetting(rawConfig.eyebrow, defaultDashboardConfig.eyebrow),
-      title: textSetting(rawConfig.title, defaultDashboardConfig.title),
-      headerOrder: orderedSlots(rawConfig.headerOrder, defaultDashboardConfig.headerOrder),
-      footerOrder: orderedSlots(rawConfig.footerOrder, defaultDashboardConfig.footerOrder),
-    };
+    const sourcePath = fs.existsSync(dashboardOverridePath) ? dashboardOverridePath : dashboardConfigPath;
+    return normalizeDashboardConfig(JSON.parse(fs.readFileSync(sourcePath, 'utf8')));
   } catch (error) {
     if (error.code !== 'ENOENT') console.error('Configuration dashboard invalide; configuration par defaut utilisee.');
     return { ...defaultDashboardConfig };
   }
 }
 
-const dashboardConfig = loadDashboardConfig();
+let dashboardConfig = loadDashboardConfig();
 
 function validateRuntimeConfiguration() {
   if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('PORT doit etre compris entre 1024 et 65535.');
@@ -68,6 +92,33 @@ function validateRuntimeConfiguration() {
 }
 
 validateRuntimeConfiguration();
+
+function isAdminRequest(request) {
+  const expected = process.env.NOC_ADMIN_TOKEN;
+  const supplied = request.get('x-noc-admin-token');
+  if (!expected || !supplied) return false;
+  const expectedBuffer = Buffer.from(expected);
+  const suppliedBuffer = Buffer.from(supplied);
+  return expectedBuffer.length === suppliedBuffer.length && crypto.timingSafeEqual(expectedBuffer, suppliedBuffer);
+}
+
+function requireAdmin(request, response, next) {
+  if (isAdminRequest(request)) return next();
+  return response.status(401).json({ ok: false, error: 'Acces administrateur requis.' });
+}
+
+function saveDashboardConfig(rawConfig) {
+  const nextConfig = normalizeDashboardConfig(rawConfig);
+  const temporaryPath = `${dashboardOverridePath}.tmp`;
+  fs.writeFileSync(temporaryPath, `${JSON.stringify(nextConfig, null, 2)}\n`, { mode: 0o600 });
+  fs.renameSync(temporaryPath, dashboardOverridePath);
+  dashboardConfig = nextConfig;
+  cache.data = null;
+  cache.updatedAt = null;
+  latencyCache.data = null;
+  latencyCache.updatedAt = null;
+  return dashboardConfig;
+}
 
 let requestId = 1;
 let legacyAuthToken = null;
@@ -161,7 +212,7 @@ async function loadHostGroups(triggers) {
   return new Map(hosts.map((host) => [host.hostid, host.groups?.map((group) => group.groupid) || []]));
 }
 
-async function problemResult(triggers, groups) {
+async function problemResult(triggers, panels) {
   const hostGroups = await loadHostGroups(triggers);
   const uniqueByHost = new Map();
   for (const trigger of triggers.filter(isIcmpProblem)) {
@@ -174,18 +225,19 @@ async function problemResult(triggers, groups) {
   const problems = [...uniqueByHost.values()].sort((first, second) => (
     second.priority - first.priority || String(second.lastChange).localeCompare(String(first.lastChange))
   ));
-  const problemsByGroup = new Map(groups.map((group) => [group.groupid, []]));
+  const problemsByPanel = new Map(panels.map((panel) => [panel.id, []]));
   for (const problem of problems) {
-    // The configured group order is the deterministic tie-breaker for multi-group hosts.
-    const selectedGroup = groups.find((group) => problem.groupids.includes(group.groupid));
-    if (selectedGroup) problemsByGroup.get(selectedGroup.groupid).push(problem);
+    // The configured panel order is the deterministic tie-breaker for multi-group hosts.
+    const selectedPanel = panels.find((panel) => panel.groupids.some((groupid) => problem.groupids.includes(groupid)));
+    if (selectedPanel) problemsByPanel.get(selectedPanel.id).push(problem);
   }
   return {
     problems,
-    groups: groups.map((group) => ({
-      id: group.groupid,
-      name: group.name,
-      problems: problemsByGroup.get(group.groupid),
+    groups: panels.map((panel) => ({
+      id: panel.id,
+      name: panel.title,
+      sourceGroups: panel.groups,
+      problems: problemsByPanel.get(panel.id),
     })),
     diagnostics: {
       activeTriggers: triggers.length,
@@ -204,7 +256,7 @@ function addSimulation(result) {
     lastChange: new Date().toISOString(),
     simulated: true,
   };
-  const targetGroup = result.groups.find((group) => group.name.toLowerCase() === 'test') || result.groups[0];
+  const targetGroup = result.groups.find((group) => group.sourceGroups?.some((name) => name.toLowerCase() === 'test')) || result.groups[0];
   const groups = result.groups.map((group) => (
     group.id === targetGroup?.id ? { ...group, problems: [simulatedProblem, ...group.problems] } : group
   ));
@@ -212,15 +264,31 @@ function addSimulation(result) {
 }
 
 async function loadConfiguredGroups() {
-  if (!configuredGroups.length) return [];
+  const groupNames = dashboardConfig.panels.length
+    ? dashboardConfig.panels.flatMap((panel) => panel.groups)
+    : fallbackGroups;
+  const uniqueNames = [...new Set(groupNames)];
+  if (!uniqueNames.length) return [];
   const matchedGroups = await rpc('hostgroup.get', {
     output: ['groupid', 'name'],
-    filter: { name: configuredGroups },
+    filter: { name: uniqueNames },
   });
   if (!matchedGroups.length) {
-    throw new Error(`Aucun groupe Zabbix trouve pour : ${configuredGroups.join(', ')}.`);
+    throw new Error(`Aucun groupe Zabbix trouve pour : ${uniqueNames.join(', ')}.`);
   }
-  return configuredGroups.map((name) => matchedGroups.find((group) => group.name === name)).filter(Boolean);
+  return uniqueNames.map((name) => matchedGroups.find((group) => group.name === name)).filter(Boolean);
+}
+
+function resolvePanels(groups) {
+  const rawPanels = dashboardConfig.panels.length ? dashboardConfig.panels : groups.map((group, index) => ({
+    id: `group-${index + 1}`,
+    title: group.name,
+    groups: [group.name],
+  }));
+  return rawPanels.map((panel) => ({
+    ...panel,
+    groupids: groups.filter((group) => panel.groups.includes(group.name)).map((group) => group.groupid),
+  })).filter((panel) => panel.groupids.length);
 }
 
 async function loadProblems() {
@@ -228,6 +296,7 @@ async function loadProblems() {
   await authenticate();
 
   const groups = await loadConfiguredGroups();
+  const panels = resolvePanels(groups);
 
   const params = {
     output: ['triggerid', 'description', 'priority', 'lastchange'],
@@ -251,9 +320,9 @@ async function loadProblems() {
     triggers = await rpc('trigger.get', params);
   }
 
-  const result = await problemResult(triggers, groups);
+  const result = await problemResult(triggers, panels);
   try {
-    const latency = await loadLatencyForGroups(groups);
+    const latency = await loadLatencyForGroups(groups, panels);
     const latencyByGroup = new Map(latency.groups.map((group) => [group.id, group]));
     result.groups = result.groups.map((group) => ({ ...group, ...latencyByGroup.get(group.id) }));
   } catch (error) {
@@ -267,7 +336,7 @@ function roundMilliseconds(value) {
   return Math.round(value * 10) / 10;
 }
 
-async function loadLatencyForGroups(groups) {
+async function loadLatencyForGroups(groups, panels) {
   const groupids = groups.map((group) => group.groupid);
   const hosts = await rpc('host.get', {
     output: ['hostid', 'name', 'host'],
@@ -276,11 +345,11 @@ async function loadLatencyForGroups(groups) {
     selectGroups: ['groupid'],
   });
   const hostsById = new Map(hosts.map((host) => [host.hostid, host]));
-  const hostsByGroup = new Map(groups.map((group) => [group.groupid, []]));
+  const hostsByPanel = new Map(panels.map((panel) => [panel.id, []]));
 
   for (const host of hosts) {
-    const targetGroup = groups.find((group) => host.groups?.some((hostGroup) => hostGroup.groupid === group.groupid));
-    if (targetGroup) hostsByGroup.get(targetGroup.groupid).push(host.hostid);
+    const targetPanel = panels.find((panel) => host.groups?.some((hostGroup) => panel.groupids.includes(hostGroup.groupid)));
+    if (targetPanel) hostsByPanel.get(targetPanel.id).push(host.hostid);
   }
 
   const items = hosts.length ? await rpc('item.get', {
@@ -303,14 +372,15 @@ async function loadLatencyForGroups(groups) {
   }
 
   return {
-    groups: groups.map((group) => {
-      const hostids = hostsByGroup.get(group.groupid);
+    groups: panels.map((panel) => {
+      const hostids = hostsByPanel.get(panel.id);
       const measurements = hostids.map((hostid) => ({ host: hostsById.get(hostid), ...latestByHost.get(hostid) })).filter((item) => item.milliseconds !== undefined);
       const values = measurements.map((item) => item.milliseconds);
       const averageMs = values.length ? roundMilliseconds(values.reduce((total, value) => total + value, 0) / values.length) : null;
       return {
-        id: group.groupid,
-        name: group.name,
+        id: panel.id,
+        name: panel.title,
+        sourceGroups: panel.groups,
         totalHosts: hostids.length,
         respondingHosts: measurements.length,
         averageMs,
@@ -334,7 +404,8 @@ async function loadLatencyForGroups(groups) {
 async function loadLatency() {
   requireCredentials();
   await authenticate();
-  return loadLatencyForGroups(await loadConfiguredGroups());
+  const groups = await loadConfiguredGroups();
+  return loadLatencyForGroups(groups, resolvePanels(groups));
 }
 
 async function refresh() {
@@ -346,7 +417,7 @@ async function refresh() {
         problems,
         groups,
         diagnostics: { ...diagnostics, simulationEnabled: process.env.NOC_TEST_MODE === 'true' },
-        groupFilter: configuredGroups,
+        groupFilter: dashboardConfig.panels.length ? dashboardConfig.panels.flatMap((panel) => panel.groups) : fallbackGroups,
         fetchedAt: new Date().toISOString(),
       };
       cache.updatedAt = Date.now();
@@ -404,6 +475,7 @@ app.use(helmet({
   hsts: process.env.NOC_ENABLE_HSTS === 'true' ? undefined : false,
   referrerPolicy: { policy: 'no-referrer' },
 }));
+app.use(express.json({ limit: '16kb', type: 'application/json' }));
 app.use(express.static('public', {
   extensions: ['html'],
   setHeaders: (response) => response.setHeader('Cache-Control', 'no-cache'),
@@ -415,6 +487,36 @@ const apiRateLimit = rateLimit({
   standardHeaders: 'draft-7',
   legacyHeaders: false,
   message: { ok: false, error: 'Trop de requetes.' },
+});
+
+app.get('/api/configuration', apiRateLimit, requireAdmin, (_request, response) => {
+  response.setHeader('Cache-Control', 'no-store');
+  response.json({ ok: true, dashboard: dashboardConfig });
+});
+
+app.get('/api/host-groups', apiRateLimit, requireAdmin, async (_request, response) => {
+  try {
+    requireCredentials();
+    await authenticate();
+    const groups = await rpc('hostgroup.get', { output: ['groupid', 'name'], sortfield: 'name', sortorder: 'ASC' });
+    response.setHeader('Cache-Control', 'no-store');
+    response.json({ ok: true, groups: groups.map((group) => group.name) });
+  } catch (error) {
+    legacyAuthToken = null;
+    console.error(`Lecture des groupes impossible: ${error.message}`);
+    response.status(503).json({ ok: false, error: 'Impossible de lire les groupes.' });
+  }
+});
+
+app.put('/api/configuration', apiRateLimit, requireAdmin, (request, response) => {
+  try {
+    const config = saveDashboardConfig(request.body);
+    response.setHeader('Cache-Control', 'no-store');
+    response.json({ ok: true, dashboard: config });
+  } catch (error) {
+    console.error(`Enregistrement de configuration impossible: ${error.message}`);
+    response.status(500).json({ ok: false, error: 'Impossible d enregistrer la configuration.' });
+  }
 });
 
 app.get('/api/status', apiRateLimit, async (_request, response) => {
