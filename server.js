@@ -338,11 +338,17 @@ async function loadProblems() {
     result.groups = result.groups.map((group) => ({ ...group, services: servicesByGroup.get(group.id) || [] }));
     result.diagnostics.monitoredWebServices = webServices.total;
     result.diagnostics.downWebServices = webServices.down;
+    result.diagnostics.resolvedWebServices = webServices.resolved;
+    result.diagnostics.webMonitoringItems = webServices.items;
+    result.diagnostics.webMonitoringAvailable = true;
   } catch (error) {
     console.error(`Lecture des services web indisponible: ${error.message}`);
     result.groups = result.groups.map((group) => ({ ...group, services: [] }));
     result.diagnostics.monitoredWebServices = 0;
     result.diagnostics.downWebServices = 0;
+    result.diagnostics.resolvedWebServices = 0;
+    result.diagnostics.webMonitoringItems = 0;
+    result.diagnostics.webMonitoringAvailable = false;
   }
   return result;
 }
@@ -378,9 +384,10 @@ function zabbixKeyArguments(key, prefix) {
 }
 
 async function loadWebServicesForGroups(groups, panels) {
+  const groupids = groups.map((group) => group.groupid);
   const hosts = await rpc('host.get', {
     output: ['hostid', 'name', 'host'],
-    groupids: groups.map((group) => group.groupid),
+    groupids,
     filter: { status: 0 },
     selectGroups: ['groupid'],
   });
@@ -391,46 +398,54 @@ async function loadWebServicesForGroups(groups, panels) {
     if (panel) panelByHost.set(currentHost.hostid, panel.id);
   }
 
-  const commonParams = {
-    output: ['itemid', 'hostid', 'name', 'key_', 'lastvalue', 'lastclock', 'state', 'status'],
-    hostids: hosts.map((currentHost) => currentHost.hostid),
+  const scenarios = await rpc('httptest.get', {
+    output: ['httptestid', 'hostid', 'name', 'delay', 'status'],
+    groupids,
     monitored: true,
+    selectHosts: ['hostid', 'host', 'name'],
+    selectSteps: ['httpstepid', 'name', 'no'],
+    sortfield: 'name',
+    sortorder: 'ASC',
+  });
+  const scenarioHostids = [...new Set(scenarios.map((scenario) => scenario.hostid || scenario.hosts?.[0]?.hostid).filter(Boolean))];
+  const items = scenarioHostids.length ? await rpc('item.get', {
+    output: ['itemid', 'hostid', 'name', 'key_', 'lastvalue', 'lastclock', 'state', 'status'],
+    hostids: scenarioHostids,
+    monitored: true,
+    search: { key_: 'web.test.' },
     searchWildcardsEnabled: false,
-  };
-  const [failureItems, responseItems] = hosts.length ? await Promise.all([
-    rpc('item.get', { ...commonParams, search: { key_: 'web.test.fail[' } }),
-    rpc('item.get', { ...commonParams, search: { key_: 'web.test.rspcode[' } }),
-  ]) : [[], []];
-
-  const latestResponseByScenario = new Map();
-  for (const item of responseItems) {
-    const [scenario] = zabbixKeyArguments(item.key_, 'web.test.rspcode');
-    if (!scenario) continue;
-    const serviceKey = `${item.hostid}:${scenario}`;
-    const existing = latestResponseByScenario.get(serviceKey);
-    if (!existing || Number(item.lastclock) > Number(existing.lastclock)) latestResponseByScenario.set(serviceKey, item);
-  }
+  }) : [];
 
   const servicesByPanel = new Map(panels.map((panel) => [panel.id, []]));
-  for (const item of failureItems) {
-    const [scenario] = zabbixKeyArguments(item.key_, 'web.test.fail');
-    const panelId = panelByHost.get(item.hostid);
-    const currentHost = hostById.get(item.hostid);
-    if (!scenario || !panelId || !currentHost) continue;
-    const lastClockSeconds = Number(item.lastclock);
+  for (const scenario of scenarios) {
+    const hostid = scenario.hostid || scenario.hosts?.[0]?.hostid;
+    const panelId = panelByHost.get(hostid);
+    const currentHost = hostById.get(hostid) || scenario.hosts?.[0];
+    if (!hostid || !panelId || !currentHost) continue;
+    const hostItems = items.filter((item) => item.hostid === hostid);
+    const failureItem = hostItems.find((item) => zabbixKeyArguments(item.key_, 'web.test.fail')[0] === scenario.name)
+      || (scenarios.filter((candidate) => (candidate.hostid || candidate.hosts?.[0]?.hostid) === hostid).length === 1
+        ? hostItems.find((item) => item.key_.startsWith('web.test.fail[')) : null);
+    const responseItems = hostItems.filter((item) => zabbixKeyArguments(item.key_, 'web.test.rspcode')[0] === scenario.name)
+      .sort((first, second) => Number(second.lastclock) - Number(first.lastclock));
+    const responseItem = responseItems[0] || null;
+    const lastClockSeconds = Math.max(Number(failureItem?.lastclock || 0), Number(responseItem?.lastclock || 0));
     const fresh = Number.isFinite(lastClockSeconds) && lastClockSeconds > 0
       && (Date.now() / 1000) - lastClockSeconds <= webStatusStaleSeconds;
-    const supported = Number(item.state) === 0 && fresh;
-    const status = supported ? (Number(item.lastvalue) === 0 ? 'up' : 'down') : 'unknown';
-    const responseItem = latestResponseByScenario.get(`${item.hostid}:${scenario}`);
-    const responseCode = responseItem && Number(responseItem.lastclock) >= lastClockSeconds ? Number(responseItem.lastvalue) : null;
+    const itemSupported = failureItem ? Number(failureItem.state) === 0 : responseItem && Number(responseItem.state) === 0;
+    const supported = Boolean(itemSupported && fresh);
+    const responseCode = responseItem && Number(responseItem.lastclock) > 0 ? Number(responseItem.lastvalue) : null;
+    let status = 'unknown';
+    if (supported && failureItem) status = Number(failureItem.lastvalue) === 0 ? 'up' : 'down';
+    else if (supported && Number.isFinite(responseCode)) status = responseCode === 200 ? 'up' : 'down';
     servicesByPanel.get(panelId).push({
-      id: item.itemid,
-      name: scenario,
+      id: scenario.httptestid,
+      name: scenario.name,
       host: currentHost.name || currentHost.host,
       status,
       responseCode: Number.isFinite(responseCode) ? responseCode : null,
       lastCheck: supported ? new Date(lastClockSeconds * 1000).toISOString() : null,
+      interval: scenario.delay,
     });
   }
 
@@ -443,6 +458,8 @@ async function loadWebServicesForGroups(groups, panels) {
     groups: panelGroups,
     total: services.length,
     down: services.filter((service) => service.status === 'down').length,
+    resolved: services.filter((service) => service.status !== 'unknown').length,
+    items: items.length,
   };
 }
 

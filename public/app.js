@@ -99,7 +99,7 @@ function renderServices(services = []) {
       <div class="service-copy">
         <small>SERVICE WEB</small>
         <strong>${escapeHtml(service.name)}</strong>
-        <span>${responseCode} · Controle : ${formatTime(service.lastCheck)}</span>
+        <span>${responseCode}${service.interval ? ` · Toutes les ${escapeHtml(service.interval)}` : ''} · Controle : ${formatTime(service.lastCheck)}</span>
       </div>
       <b>${statusLabel}</b>
     </div>`;
@@ -192,7 +192,7 @@ async function load() {
     allGroups = data.groups || [];
     const webServices = allGroups.flatMap((group) => group.services || []);
     count.textContent = data.problems.length + webServices.filter((service) => service.status === 'down').length;
-    scope.textContent = `${allGroups.length} groupes · ${webServices.length} services web`;
+    scope.textContent = `${allGroups.length} groupes · ${webServices.length ? `${webServices.length} services web` : 'aucun service web detecte'}`;
     updatedAt.textContent = `Mise a jour : ${formatTime(data.fetchedAt)}`;
     setConnection(payload.ok, payload.ok ? 'Service connecte' : 'Dernieres donnees affichees');
     render();
