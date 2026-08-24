@@ -12,6 +12,26 @@ expected_remote="https://github.com/yassirkadouari/zabbix-noc-dashboard-.git"
 source_dir="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 source_owner="${SUDO_USER:-root}"
 
+migrate_known_environment_defaults() {
+  local env_file="$install_dir/.env"
+  local migrated_api=false
+
+  if grep -Eq '^ZABBIX_API_URL=https?://172\.16\.132\.86/api_jsonrpc\.php$' "$env_file"; then
+    sed -i 's|^ZABBIX_API_URL=https\?://172\.16\.132\.86/api_jsonrpc\.php$|ZABBIX_API_URL=http://172.16.132.86:8080/api_jsonrpc.php|' "$env_file"
+    migrated_api=true
+  fi
+
+  if [ "$migrated_api" = true ]; then
+    sed -i 's/^ZABBIX_ALLOW_INSECURE_HTTP=false$/ZABBIX_ALLOW_INSECURE_HTTP=true/' "$env_file"
+    echo "Ancienne adresse de supervision corrigee avec le port 8080."
+  fi
+
+  if grep -q '^PORT=3000$' "$env_file"; then
+    sed -i 's/^PORT=3000$/PORT=3100/' "$env_file"
+    echo "Ancien port du dashboard migre de 3000 vers 3100."
+  fi
+}
+
 install_dependencies() {
   if npm ci --omit=dev --prefer-offline --prefix "$install_dir"; then
     return
@@ -58,6 +78,7 @@ fi
 
 sudo -u "$source_owner" git -C "$source_dir" pull --ff-only
 sudo -u "$source_owner" git -C "$source_dir" archive --format=tar HEAD | tar -C "$install_dir" -xf -
+migrate_known_environment_defaults
 chmod 0600 "$install_dir/.env"
 install_dependencies
 chown -R "$service_user:$service_user" "$install_dir"

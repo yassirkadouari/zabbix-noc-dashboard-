@@ -339,17 +339,29 @@ Ne modifiez pas le scenario NAVIS de production. Creez un host et un scenario We
 Verifiez l'adresse exacte :
 
 ```dotenv
-ZABBIX_API_URL=http://127.0.0.1:8080/api_jsonrpc.php
+ZABBIX_API_URL=http://172.16.132.86:8080/api_jsonrpc.php
 ZABBIX_ALLOW_INSECURE_HTTP=true
+ZABBIX_REQUEST_TIMEOUT_MS=5000
 ```
 
 Puis :
 
 ```bash
-curl -I http://127.0.0.1:8080/api_jsonrpc.php
+curl -sS --max-time 10 -H 'Content-Type: application/json-rpc' \
+  -d '{"jsonrpc":"2.0","method":"apiinfo.version","params":{},"id":1}' \
+  http://172.16.132.86:8080/api_jsonrpc.php
 sudo systemctl restart noc-zabbix
 sudo journalctl -u noc-zabbix -n 100 --no-pager
 ```
+
+Le test du dashboard et le test de la source sont distincts :
+
+```bash
+curl -sS --max-time 5 http://127.0.0.1:3100/api/health
+curl -sS --max-time 15 http://127.0.0.1:3100/api/status | jq
+```
+
+N'ecrivez pas les URL sous la forme Markdown `[http://...](http://...)` dans le terminal.
 
 ### Le dashboard fonctionne mais NAVIS n'apparait pas
 

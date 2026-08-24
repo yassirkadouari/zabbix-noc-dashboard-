@@ -32,10 +32,11 @@ npm install
 cp .env.example .env
 ```
 
-Renseignez `.env` avec l'URL JSON-RPC exacte de Zabbix et un jeton API en lecture seule. Utilisez HTTPS, avec un certificat valide, pour proteger le jeton et les donnees de supervision :
+Renseignez `.env` avec l'URL JSON-RPC exacte de Zabbix et un jeton API en lecture seule. Pour l'installation actuelle sur le reseau interne :
 
 ```dotenv
-ZABBIX_API_URL=https://172.16.132.86/api_jsonrpc.php
+ZABBIX_API_URL=http://172.16.132.86:8080/api_jsonrpc.php
+ZABBIX_ALLOW_INSECURE_HTTP=true
 ```
 
 Puis lancez l'ecran:
@@ -58,7 +59,7 @@ Avant l'installation, restreignez les droits du secret :
 chmod 600 .env
 ```
 
-L'usage de HTTP est bloque par defaut. Si une migration HTTPS est vraiment impossible, activez explicitement `ZABBIX_ALLOW_INSECURE_HTTP=true`; ce choix expose le trafic et doit rester exceptionnel.
+Cette installation interne utilise actuellement HTTP sur le port `8080`. Le jeton doit donc rester strictement en lecture seule et le dashboard doit rester lie a `127.0.0.1`. Migrez l'API vers HTTPS des que l'infrastructure le permet.
 
 Lorsque Zabbix Web et le dashboard sont sur le meme PC et que Zabbix est expose par Docker sur le port `8080`, la connexion reste locale au poste. Utilisez alors :
 

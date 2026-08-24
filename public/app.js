@@ -182,7 +182,10 @@ function setConnection(ok, message) {
 async function load() {
   let pollIntervalSeconds = 30;
   try {
-    const response = await fetch('/api/status', { cache: 'no-store' });
+    const response = await fetch('/api/status', {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(15_000),
+    });
     const payload = await response.json();
     const data = payload.ok ? payload : payload.previousData;
     if (!data) throw new Error(payload.error || 'Aucune donnee disponible.');

@@ -9,7 +9,11 @@ import rateLimit from 'express-rate-limit';
 const app = express();
 const port = Number(process.env.PORT || 3100);
 const host = process.env.HOST || '127.0.0.1';
-const apiUrl = process.env.ZABBIX_API_URL || 'https://172.16.132.86/api_jsonrpc.php';
+const apiUrl = process.env.ZABBIX_API_URL || 'http://172.16.132.86:8080/api_jsonrpc.php';
+const requestedZabbixTimeoutMs = Number(process.env.ZABBIX_REQUEST_TIMEOUT_MS || 5000);
+const zabbixTimeoutMs = Number.isFinite(requestedZabbixTimeoutMs)
+  ? Math.min(30_000, Math.max(1_000, requestedZabbixTimeoutMs))
+  : 5000;
 const pollIntervalMs = Math.max(5, Number(process.env.POLL_INTERVAL_SECONDS || 45)) * 1000;
 const requestedWebStaleSeconds = Number(process.env.WEB_STATUS_STALE_SECONDS || 180);
 const webStatusStaleSeconds = Number.isFinite(requestedWebStaleSeconds) && requestedWebStaleSeconds >= 60
@@ -159,7 +163,7 @@ async function rpc(method, params = {}, auth = legacyAuthToken) {
     method: 'POST',
     headers,
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(12000),
+    signal: AbortSignal.timeout(zabbixTimeoutMs),
     redirect: 'error',
   });
 
@@ -167,6 +171,17 @@ async function rpc(method, params = {}, auth = legacyAuthToken) {
   const payload = await response.json();
   if (payload.error) throw new Error(`Zabbix: ${payload.error.data || payload.error.message}`);
   return payload.result;
+}
+
+function networkErrorDetails(error) {
+  const cause = error?.cause;
+  return [
+    error?.message,
+    cause?.message,
+    cause?.code,
+    cause?.address,
+    cause?.port,
+  ].filter((value) => value !== undefined && value !== null && value !== '').join(' | ');
 }
 
 async function authenticate() {
@@ -552,7 +567,7 @@ async function refresh() {
     .catch((error) => {
       legacyAuthToken = null;
       cache.error = true;
-      console.error(`Echec de rafraichissement Zabbix: ${error.message}`);
+      console.error(`Echec de rafraichissement Zabbix: ${networkErrorDetails(error)}`);
       throw error;
     })
     .finally(() => {
@@ -662,6 +677,11 @@ app.get('/api/status', apiRateLimit, async (_request, response) => {
   }
 });
 
+app.get('/api/health', apiRateLimit, (_request, response) => {
+  response.setHeader('Cache-Control', 'no-store');
+  response.json({ ok: true, service: 'noc-dashboard', port });
+});
+
 app.get('/api/latency', apiRateLimit, async (_request, response) => {
   const stale = !latencyCache.updatedAt || Date.now() - latencyCache.updatedAt >= pollIntervalMs;
   try {
@@ -681,5 +701,7 @@ app.get('/api/latency', apiRateLimit, async (_request, response) => {
 });
 
 app.listen(port, host, () => {
-  console.log(`Zabbix ICMP Dashboard: http://${host}:${port}`);
+  const endpoint = new URL(apiUrl);
+  console.log(`NOC Dashboard: http://${host}:${port}`);
+  console.log(`Source de supervision: ${endpoint.protocol}//${endpoint.host}${endpoint.pathname}`);
 });
