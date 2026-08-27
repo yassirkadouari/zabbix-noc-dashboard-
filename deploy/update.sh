@@ -61,21 +61,24 @@ verify_backend() {
 
   systemctl restart noc-zabbix
   for attempt in 1 2 3 4 5 6 7 8 9 10; do
-    if curl --fail --silent --max-time 2 http://127.0.0.1:3100/api/health >/dev/null; then
+    if systemctl is-active --quiet noc-zabbix \
+      && curl --fail --silent --max-time 2 http://127.0.0.1:3100/api/health >/dev/null; then
       echo "Backend local verifie: http://127.0.0.1:3100/api/health"
       break
     fi
     sleep 1
   done
 
-  if ! curl --fail --silent --max-time 2 http://127.0.0.1:3100/api/health >/dev/null; then
+  if ! systemctl is-active --quiet noc-zabbix \
+    || ! curl --fail --silent --max-time 2 http://127.0.0.1:3100/api/health >/dev/null; then
     echo "Le backend n'a pas repondu apres le redemarrage." >&2
     systemctl status noc-zabbix --no-pager --full >&2 || true
     journalctl -u noc-zabbix -n 40 --no-pager >&2 || true
     return 1
   fi
 
-  if curl --fail --silent --max-time 40 http://127.0.0.1:3100/api/status >/dev/null; then
+  if curl --fail --silent --max-time 40 http://127.0.0.1:3100/api/status >/dev/null \
+    && systemctl is-active --quiet noc-zabbix; then
     echo "Source de supervision verifiee via /api/status"
     return 0
   fi
