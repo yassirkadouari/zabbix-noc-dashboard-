@@ -62,19 +62,31 @@ verify_backend() {
   systemctl restart noc-zabbix
   for attempt in 1 2 3 4 5 6 7 8 9 10; do
     if curl --fail --silent --max-time 2 http://127.0.0.1:3100/api/health >/dev/null; then
-      echo "Backend verifie: http://127.0.0.1:3100/api/health"
-      return 0
+      echo "Backend local verifie: http://127.0.0.1:3100/api/health"
+      break
     fi
     sleep 1
   done
 
-  echo "Le backend n'a pas repondu apres le redemarrage." >&2
+  if ! curl --fail --silent --max-time 2 http://127.0.0.1:3100/api/health >/dev/null; then
+    echo "Le backend n'a pas repondu apres le redemarrage." >&2
+    systemctl status noc-zabbix --no-pager --full >&2 || true
+    journalctl -u noc-zabbix -n 40 --no-pager >&2 || true
+    return 1
+  fi
+
+  if curl --fail --silent --max-time 40 http://127.0.0.1:3100/api/status >/dev/null; then
+    echo "Source de supervision verifiee via /api/status"
+    return 0
+  fi
+
+  echo "Le backend fonctionne, mais la source de supervision reste inaccessible." >&2
   systemctl status noc-zabbix --no-pager --full >&2 || true
   journalctl -u noc-zabbix -n 40 --no-pager >&2 || true
   return 1
 }
 
-for command in curl git node npm systemctl tar; do
+for command in curl git ip node npm systemctl tar; do
   command -v "$command" >/dev/null 2>&1 || { echo "Commande manquante: $command" >&2; exit 1; }
 done
 
@@ -109,6 +121,7 @@ chmod 0600 "$install_dir/.env"
 install_dependencies
 chown -R "$service_user:$service_user" "$install_dir"
 install -m 0644 "$install_dir/deploy/noc-zabbix.service" /etc/systemd/system/noc-zabbix.service
+bash "$install_dir/deploy/configure-network-allowlist.sh"
 systemctl daemon-reload
 systemctl enable noc-zabbix
 verify_backend

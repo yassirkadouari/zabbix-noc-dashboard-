@@ -444,6 +444,25 @@ Le script controle maintenant le module, la syntaxe Node et `/api/health`. En
 cas d'echec, il affiche directement le statut systemd et les 40 dernieres lignes
 du journal au lieu d'annoncer une mise a jour reussie.
 
+### Le backend fonctionne avec `npm start`, mais pas avec systemd
+
+Ce comportement indique que l'isolation systemd bloque la source de
+supervision. Lorsque le serveur Web de supervision est publie par Docker sur
+l'adresse du PC, la traduction du port `8080` peut faire apparaitre l'adresse
+interne du conteneur au filtre `IPAddressDeny=any`.
+
+Le deploiement detecte maintenant les routes des interfaces `docker*` et
+`br-*`, puis les ajoute dans :
+
+```text
+/etc/systemd/system/noc-zabbix.service.d/network-allowlist.conf
+```
+
+Le filtrage global reste actif : seuls le loopback, l'adresse de supervision et
+les sous-reseaux des bridges de conteneurs locaux sont autorises. La mise a jour
+teste ensuite `/api/health` et `/api/status`, afin de distinguer la disponibilite
+du processus Node de la disponibilite reelle de la source.
+
 Si `systemctl` repond `Unit noc-zabbix.service could not be found`, l'installation systeme n'est pas terminee. Depuis un clone a jour contenant deja un `node_modules` fonctionnel :
 
 ```bash

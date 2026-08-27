@@ -27,7 +27,7 @@ install_dependencies() {
   echo "Dependances restaurees depuis le clone local verifie."
 }
 
-for command in node npm systemctl tar; do
+for command in ip node npm systemctl tar; do
   command -v "$command" >/dev/null 2>&1 || { echo "Commande manquante: $command" >&2; exit 1; }
 done
 
@@ -48,6 +48,7 @@ chmod 0600 "$install_dir/.env"
 install_dependencies
 chown -R "$service_user:$service_user" "$install_dir"
 install -m 0644 "$install_dir/deploy/noc-zabbix.service" /etc/systemd/system/noc-zabbix.service
+bash "$install_dir/deploy/configure-network-allowlist.sh"
 systemctl daemon-reload
 systemctl enable noc-zabbix
 
