@@ -5,6 +5,7 @@ import path from 'node:path';
 import express from 'express';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import { resolveWebScenario } from './lib/web-monitoring.js';
 
 const app = express();
 const port = Number(process.env.PORT || 3100);
@@ -355,6 +356,7 @@ async function loadProblems() {
     result.diagnostics.downWebServices = webServices.down;
     result.diagnostics.resolvedWebServices = webServices.resolved;
     result.diagnostics.webMonitoringItems = webServices.items;
+    result.diagnostics.webMonitoringUnknownReasons = webServices.unknownReasons;
     result.diagnostics.webMonitoringAvailable = true;
   } catch (error) {
     console.error(`Lecture des services web indisponible: ${error.message}`);
@@ -363,6 +365,7 @@ async function loadProblems() {
     result.diagnostics.downWebServices = 0;
     result.diagnostics.resolvedWebServices = 0;
     result.diagnostics.webMonitoringItems = 0;
+    result.diagnostics.webMonitoringUnknownReasons = {};
     result.diagnostics.webMonitoringAvailable = false;
   }
   return result;
@@ -370,32 +373,6 @@ async function loadProblems() {
 
 function roundMilliseconds(value) {
   return Math.round(value * 10) / 10;
-}
-
-function zabbixKeyArguments(key, prefix) {
-  if (!key.startsWith(`${prefix}[`) || !key.endsWith(']')) return [];
-  const source = key.slice(prefix.length + 1, -1);
-  const values = [];
-  let current = '';
-  let quoted = false;
-  let escaped = false;
-  for (const character of source) {
-    if (escaped) {
-      current += character;
-      escaped = false;
-    } else if (character === '\\' && quoted) {
-      escaped = true;
-    } else if (character === '"') {
-      quoted = !quoted;
-    } else if (character === ',' && !quoted) {
-      values.push(current.trim());
-      current = '';
-    } else {
-      current += character;
-    }
-  }
-  values.push(current.trim());
-  return values;
 }
 
 async function loadWebServicesForGroups(groups, panels) {
@@ -430,34 +407,36 @@ async function loadWebServicesForGroups(groups, panels) {
   }).then((hostItems) => hostItems.filter((item) => item.key_.startsWith('web.test.'))) : [];
 
   const servicesByPanel = new Map(panels.map((panel) => [panel.id, []]));
+  const scenarioCountByHost = new Map();
+  for (const scenario of scenarios) {
+    const scenarioHostid = scenario.hostid || scenario.hosts?.[0]?.hostid;
+    if (scenarioHostid) scenarioCountByHost.set(scenarioHostid, (scenarioCountByHost.get(scenarioHostid) || 0) + 1);
+  }
+
   for (const scenario of scenarios) {
     const hostid = scenario.hostid || scenario.hosts?.[0]?.hostid;
     const panelId = panelByHost.get(hostid);
     const currentHost = hostById.get(hostid) || scenario.hosts?.[0];
     if (!hostid || !panelId || !currentHost) continue;
     const hostItems = items.filter((item) => item.hostid === hostid);
-    const failureItem = hostItems.find((item) => zabbixKeyArguments(item.key_, 'web.test.fail')[0] === scenario.name)
-      || (scenarios.filter((candidate) => (candidate.hostid || candidate.hosts?.[0]?.hostid) === hostid).length === 1
-        ? hostItems.find((item) => item.key_.startsWith('web.test.fail[')) : null);
-    const responseItems = hostItems.filter((item) => zabbixKeyArguments(item.key_, 'web.test.rspcode')[0] === scenario.name)
-      .sort((first, second) => Number(second.lastclock) - Number(first.lastclock));
-    const responseItem = responseItems[0] || null;
-    const lastClockSeconds = Math.max(Number(failureItem?.lastclock || 0), Number(responseItem?.lastclock || 0));
-    const fresh = Number.isFinite(lastClockSeconds) && lastClockSeconds > 0
-      && (Date.now() / 1000) - lastClockSeconds <= webStatusStaleSeconds;
-    const itemSupported = failureItem ? Number(failureItem.state) === 0 : responseItem && Number(responseItem.state) === 0;
-    const supported = Boolean(itemSupported && fresh);
-    const responseCode = responseItem && Number(responseItem.lastclock) > 0 ? Number(responseItem.lastvalue) : null;
-    let status = 'unknown';
-    if (supported && failureItem) status = Number(failureItem.lastvalue) === 0 ? 'up' : 'down';
-    else if (supported && Number.isFinite(responseCode)) status = responseCode === 200 ? 'up' : 'down';
+    const resolved = resolveWebScenario({
+      scenario,
+      items: hostItems,
+      staleSeconds: webStatusStaleSeconds,
+      allowSingleScenarioFallback: scenarioCountByHost.get(hostid) === 1,
+    });
     servicesByPanel.get(panelId).push({
       id: scenario.httptestid,
       name: scenario.name,
       host: currentHost.name || currentHost.host,
-      status,
-      responseCode: Number.isFinite(responseCode) ? responseCode : null,
-      lastCheck: supported ? new Date(lastClockSeconds * 1000).toISOString() : null,
+      status: resolved.status,
+      statusReason: resolved.statusReason,
+      evidence: resolved.evidence,
+      responseCode: resolved.responseCode,
+      lastCheck: resolved.lastClock ? new Date(resolved.lastClock * 1000).toISOString() : null,
+      dataAgeSeconds: resolved.dataAgeSeconds,
+      matchedItems: resolved.matchedItems,
+      matches: resolved.matches,
       interval: scenario.delay,
     });
   }
@@ -473,6 +452,9 @@ async function loadWebServicesForGroups(groups, panels) {
     down: services.filter((service) => service.status === 'down').length,
     resolved: services.filter((service) => service.status !== 'unknown').length,
     items: items.length,
+    unknownReasons: services
+      .filter((service) => service.status === 'unknown')
+      .reduce((reasons, service) => ({ ...reasons, [service.statusReason]: (reasons[service.statusReason] || 0) + 1 }), {}),
   };
 }
 

@@ -198,6 +198,11 @@ Un host present dans plusieurs groupes est affiche dans le premier panneau corre
 - `HORS LIGNE` : `web.test.fail>0` avec une valeur recente.
 - `ETAT INCONNU` : valeur absente, item non supporte ou controle trop ancien.
 
+La carte precise maintenant la cause lorsqu'elle est connue : `ITEMS ABSENTS`,
+`DONNEES ANCIENNES`, `ITEM INACTIF` ou `VALEUR INVALIDE`. L'API expose aussi
+`statusReason`, `evidence`, `matchedItems`, `matches` et `dataAgeSeconds` pour
+permettre un diagnostic sans afficher le jeton Zabbix.
+
 `WEB_STATUS_STALE_SECONDS=180` interdit d'afficher une ancienne valeur verte pendant plus de trois minutes.
 
 ## 8. Diagnostic NAVIS
@@ -230,7 +235,10 @@ Resultat normal :
     {
       "name": "navis.marsamaroc.co.ma",
       "status": "up",
+      "statusReason": "scenario-succeeded",
+      "evidence": "web.test.fail",
       "responseCode": 200,
+      "matchedItems": 2,
       "interval": "1m"
     }
   ]
@@ -244,12 +252,32 @@ Interpretation :
 - `monitoredWebServices=1` et `resolvedWebServices=0` : scenario trouve, mais valeur absente, ancienne ou non supportee.
 - `webMonitoringItems=0` : le jeton ne voit pas les items ou Zabbix ne les a pas encore crees.
 - `status=unknown` : ouvrez `Monitoring` puis `Latest data` pour verifier les items du scenario.
+- `statusReason=items-not-found` : les cles `web.test.*` ne sont pas visibles par le jeton.
+- `statusReason=failure-item-stale` : le dernier controle depasse `WEB_STATUS_STALE_SECONDS`.
+- `statusReason=failure-item-unsupported` : l'item automatique est non supporte ou desactive.
+- `matches.failure=single-scenario` : le backend a utilise le repli sur l'unique scenario du host, notamment lorsque sa cle contient une macro.
 
 Journal du serveur :
 
 ```bash
 sudo journalctl -u noc-zabbix -n 100 --no-pager
 ```
+
+Apres une mise a jour contenant la correction NAVIS :
+
+```bash
+cd ~/Desktop/testingnoc/zabbix-noc-dashboard-
+git pull --ff-only origin main
+npm ci
+npm test
+sudo ./deploy/update.sh
+curl -sS --max-time 20 http://127.0.0.1:3100/api/status | \
+  jq '{diagnostics, services: [.groups[].services[]?]}'
+```
+
+Avec les valeurs visibles dans `Latest data` (`web.test.fail=0`, code HTTP `200`
+et controle de moins de 180 secondes), le resultat attendu est `status: "up"` et
+`statusReason: "scenario-succeeded"`.
 
 ## 9. Mise a jour
 

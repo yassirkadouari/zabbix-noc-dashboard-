@@ -92,7 +92,18 @@ function renderProblems(group) {
 function renderServices(services = []) {
   if (!services.length) return '';
   return `<div class="service-list">${services.map((service) => {
-    const statusLabel = service.status === 'up' ? 'EN LIGNE' : service.status === 'down' ? 'HORS LIGNE' : 'ETAT INCONNU';
+    const unknownLabels = {
+      'items-not-found': 'ITEMS ABSENTS',
+      'failure-item-stale': 'DONNEES ANCIENNES',
+      'response-item-stale': 'DONNEES ANCIENNES',
+      'failure-item-unsupported': 'ITEM INACTIF',
+      'response-item-unsupported': 'ITEM INACTIF',
+      'failure-value-invalid': 'VALEUR INVALIDE',
+      'response-code-invalid': 'VALEUR INVALIDE',
+    };
+    const statusLabel = service.status === 'up' ? 'EN LIGNE'
+      : service.status === 'down' ? 'HORS LIGNE'
+        : unknownLabels[service.statusReason] || 'ETAT INCONNU';
     const responseCode = service.responseCode === null ? 'HTTP --' : `HTTP ${service.responseCode}`;
     return `<div class="service-monitor ${service.status}">
       <span class="service-signal"><span></span></span>
