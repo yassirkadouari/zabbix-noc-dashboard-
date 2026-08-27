@@ -166,6 +166,10 @@ curl -s http://127.0.0.1:3100/api/status
 
 ## 6. Configuration depuis l'interface
 
+Pour la rotation de `NOC_ADMIN_TOKEN`, la modification des autres variables de
+production, les sauvegardes et le retour arriere, consultez le guide dedie
+[`CONFIG_GUIDE.md`](CONFIG_GUIDE.md).
+
 Ouvrez :
 
 ```text

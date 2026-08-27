@@ -27,7 +27,7 @@ install_dependencies() {
   echo "Dependances restaurees depuis le clone local verifie."
 }
 
-for command in ip node npm systemctl tar; do
+for command in getent ip node npm systemctl tar; do
   command -v "$command" >/dev/null 2>&1 || { echo "Commande manquante: $command" >&2; exit 1; }
 done
 

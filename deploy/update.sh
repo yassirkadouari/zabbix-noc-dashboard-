@@ -89,7 +89,7 @@ verify_backend() {
   return 1
 }
 
-for command in curl git ip node npm systemctl tar; do
+for command in curl getent git ip node npm systemctl tar; do
   command -v "$command" >/dev/null 2>&1 || { echo "Commande manquante: $command" >&2; exit 1; }
 done
 

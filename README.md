@@ -1,6 +1,9 @@
 # Tableau de bord ICMP Zabbix
 
-La procedure complete d'installation, configuration, supervision NAVIS, mise a jour, securite et depannage se trouve dans [`DOCUMENTATION.md`](DOCUMENTATION.md).
+La procedure complete d'installation, supervision NAVIS, mise a jour, securite
+et depannage se trouve dans [`DOCUMENTATION.md`](DOCUMENTATION.md). Les
+administrateurs qui doivent modifier le fichier de production `.env` ou changer
+le secret de la page Settings doivent suivre [`CONFIG_GUIDE.md`](CONFIG_GUIDE.md).
 
 Ecran de supervision sans interaction: il liste les hôtes ayant un trigger actif sur un item `icmpping` et affiche en permanence l'etat des scenarios web presents dans les groupes surveilles.
 
