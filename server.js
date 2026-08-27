@@ -5,7 +5,7 @@ import path from 'node:path';
 import express from 'express';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import { resolveWebScenario } from './lib/web-monitoring.js';
+import { resolveWebScenario, webItemQuery } from './lib/web-monitoring.js';
 
 const app = express();
 const port = Number(process.env.PORT || 3100);
@@ -400,11 +400,10 @@ async function loadWebServicesForGroups(groups, panels) {
     sortorder: 'ASC',
   });
   const scenarioHostids = [...new Set(scenarios.map((scenario) => scenario.hostid || scenario.hosts?.[0]?.hostid).filter(Boolean))];
-  const items = scenarioHostids.length ? await rpc('item.get', {
-    output: ['itemid', 'hostid', 'name', 'key_', 'lastvalue', 'lastclock', 'state', 'status'],
-    hostids: scenarioHostids,
-    monitored: true,
-  }).then((hostItems) => hostItems.filter((item) => item.key_.startsWith('web.test.'))) : [];
+  const items = scenarioHostids.length
+    ? await rpc('item.get', webItemQuery(scenarioHostids))
+      .then((hostItems) => hostItems.filter((item) => item.key_.startsWith('web.test.')))
+    : [];
 
   const servicesByPanel = new Map(panels.map((panel) => [panel.id, []]));
   const scenarioCountByHost = new Map();

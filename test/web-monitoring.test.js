@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveWebScenario, zabbixKeyArguments } from '../lib/web-monitoring.js';
+import { resolveWebScenario, webItemQuery, zabbixKeyArguments } from '../lib/web-monitoring.js';
 
 const nowSeconds = 1_800_000_000;
 const scenario = { name: 'navis.marsamaroc.co.ma' };
@@ -16,6 +16,15 @@ function item(key_, lastvalue, overrides = {}) {
     ...overrides,
   };
 }
+
+test('demande explicitement les items de scenarios Web a item.get', () => {
+  const query = webItemQuery(['10']);
+  assert.equal(query.webitems, true);
+  assert.equal(query.monitored, true);
+  assert.deepEqual(query.hostids, ['10']);
+  assert.ok(query.output.includes('key_'));
+  assert.ok(query.output.includes('lastvalue'));
+});
 
 test('analyse les arguments de cles Zabbix cites et contenant des virgules', () => {
   assert.deepEqual(

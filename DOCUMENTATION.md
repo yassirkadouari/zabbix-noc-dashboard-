@@ -260,6 +260,12 @@ Interpretation :
 - `statusReason=failure-item-unsupported` : l'item automatique est non supporte ou desactive.
 - `matches.failure=single-scenario` : le backend a utilise le repli sur l'unique scenario du host, notamment lorsque sa cle contient une macro.
 
+L'API Zabbix exclut les items de scenarios Web d'un appel `item.get` standard.
+Le backend transmet donc explicitement `webitems: true`, puis limite localement
+le resultat aux cles `web.test.*`. Sans ce drapeau, le scenario reste visible
+avec `httptest.get`, mais `webMonitoringItems` vaut zero et la carte affiche
+`ITEMS ABSENTS` alors que les valeurs existent dans `Latest data`.
+
 Journal du serveur :
 
 ```bash
