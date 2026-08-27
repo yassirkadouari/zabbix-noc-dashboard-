@@ -48,7 +48,33 @@ install_dependencies() {
   echo "Dependances restaurees depuis le clone local verifie."
 }
 
-for command in git node npm systemctl tar; do
+verify_backend() {
+  if [ ! -r "$install_dir/lib/web-monitoring.js" ]; then
+    echo "Module backend manquant: $install_dir/lib/web-monitoring.js" >&2
+    return 1
+  fi
+
+  if ! sudo -u "$service_user" node --check "$install_dir/server.js"; then
+    echo "Le controle de syntaxe du backend a echoue." >&2
+    return 1
+  fi
+
+  systemctl restart noc-zabbix
+  for attempt in 1 2 3 4 5 6 7 8 9 10; do
+    if curl --fail --silent --max-time 2 http://127.0.0.1:3100/api/health >/dev/null; then
+      echo "Backend verifie: http://127.0.0.1:3100/api/health"
+      return 0
+    fi
+    sleep 1
+  done
+
+  echo "Le backend n'a pas repondu apres le redemarrage." >&2
+  systemctl status noc-zabbix --no-pager --full >&2 || true
+  journalctl -u noc-zabbix -n 40 --no-pager >&2 || true
+  return 1
+}
+
+for command in curl git node npm systemctl tar; do
   command -v "$command" >/dev/null 2>&1 || { echo "Commande manquante: $command" >&2; exit 1; }
 done
 
@@ -85,6 +111,6 @@ chown -R "$service_user:$service_user" "$install_dir"
 install -m 0644 "$install_dir/deploy/noc-zabbix.service" /etc/systemd/system/noc-zabbix.service
 systemctl daemon-reload
 systemctl enable noc-zabbix
-systemctl restart noc-zabbix
+verify_backend
 
 echo "Mise a jour terminee depuis $source_dir. Les fichiers .env et dashboard.local.json ont ete conserves."

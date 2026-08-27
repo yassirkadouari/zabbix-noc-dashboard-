@@ -424,6 +424,26 @@ sudo journalctl -u noc-zabbix -n 100 --no-pager
 sudo -u nocdashboard /usr/bin/node --check /opt/zabbix-noc-dashboard/server.js
 ```
 
+Depuis la correction NAVIS, le backend utilise aussi le module suivant :
+
+```bash
+sudo test -r /opt/zabbix-noc-dashboard/lib/web-monitoring.js && echo "module present"
+```
+
+Si Node affiche `ERR_MODULE_NOT_FOUND` pour ce fichier, l'installation a ete
+mise a jour partiellement. Ne copiez pas uniquement `server.js`. Relancez la
+mise a jour complete depuis le clone Git :
+
+```bash
+cd ~/Desktop/testingnoc/zabbix-noc-dashboard-
+git pull --ff-only origin main
+sudo ./deploy/update.sh
+```
+
+Le script controle maintenant le module, la syntaxe Node et `/api/health`. En
+cas d'echec, il affiche directement le statut systemd et les 40 dernieres lignes
+du journal au lieu d'annoncer une mise a jour reussie.
+
 Si `systemctl` repond `Unit noc-zabbix.service could not be found`, l'installation systeme n'est pas terminee. Depuis un clone a jour contenant deja un `node_modules` fonctionnel :
 
 ```bash
