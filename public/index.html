@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#16365f" />
     <title>NOC, TC3-TCR</title>
-    <link rel="stylesheet" href="/styles.css?v=noc-wall-10" />
+    <link rel="stylesheet" href="/styles.css?v=noc-wall-12" />
   </head>
   <body>
     <main class="dashboard" aria-live="polite">
@@ -24,8 +24,11 @@
           <strong id="problem-count">--</strong>
         </section>
         <section class="connection" data-slot="connection" aria-label="Etat de la connexion">
-          <span id="connection-dot" class="dot"></span>
-          <span id="connection-text">Connexion au service...</span>
+          <div class="connection-status">
+            <span id="connection-dot" class="dot"></span>
+            <span id="connection-text">Connexion au service...</span>
+          </div>
+          <a class="settings-link" href="/settings.html">Configuration</a>
         </section>
       </header>
 

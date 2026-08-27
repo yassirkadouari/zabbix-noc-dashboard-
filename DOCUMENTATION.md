@@ -172,6 +172,9 @@ Ouvrez :
 http://127.0.0.1:3100/settings.html
 ```
 
+Le bouton `Configuration` de la barre superieure ouvre directement cette page.
+Le lien `Retour au NOC` permet ensuite de revenir au tableau de bord principal.
+
 Entrez `NOC_ADMIN_TOKEN`, puis configurez :
 
 - le titre et le sous-titre ;

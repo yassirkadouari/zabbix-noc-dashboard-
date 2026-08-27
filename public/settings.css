@@ -5,10 +5,14 @@ button, input, select { font: inherit; }
 button { cursor: pointer; }
 .settings-shell { width: min(1280px, calc(100% - 48px)); margin: 0 auto; padding: 38px 0 72px; }
 .settings-header { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-bottom: 28px; border-bottom: 1px solid #35505a; }
+.settings-header-actions { display: flex; align-items: center; gap: 10px; }
 .settings-header p, .section-heading p { margin: 0; color: #66ddd5; font-size: 12px; font-weight: 800; text-transform: uppercase; }
 .settings-header h1 { margin: 6px 0 0; font-size: clamp(31px, 4vw, 52px); line-height: 1; }
 .connection-state { padding: 8px 11px; border: 1px solid #687c84; border-radius: 4px; color: #c6d5d8; font-size: 13px; font-weight: 750; }
 .connection-state.open { border-color: #3bc97d; color: #bff3d1; }
+.dashboard-link { display: inline-flex; min-height: 36px; align-items: center; justify-content: center; padding: 7px 12px; border: 1px solid #6dc4ec; border-radius: 4px; color: #d8f2ff; background: #19445a; font-size: 13px; font-weight: 800; line-height: 1; text-decoration: none; }
+.dashboard-link:hover { border-color: #80d6ee; background: #205a75; }
+.dashboard-link:focus-visible { outline: 3px solid #66ddd54d; outline-offset: 2px; }
 .unlock-panel, .settings-section { margin-top: 28px; padding: clamp(20px, 3vw, 38px); border: 1px solid #36525c; border-radius: 7px; background: #12232b; }
 .unlock-panel { max-width: 640px; }
 .unlock-panel h2, .section-heading h2 { margin: 6px 0 0; font-size: 25px; }
@@ -43,4 +47,4 @@ input:focus, select:focus { border-color: #66ddd5; box-shadow: 0 0 0 3px #66ddd5
 .save-bar p { margin: 0; color: #bed0d3; font-size: 13px; }
 .save-button { border-color: #58d788; background: #24854e; white-space: nowrap; }
 @media (max-width: 850px) { .field-grid { grid-template-columns: 1fr; } .group-picker { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (max-width: 560px) { .settings-shell { width: min(100% - 28px, 1280px); } .settings-header, .panels-heading, .save-bar { align-items: flex-start; flex-direction: column; } .token-row { grid-template-columns: 1fr; } .group-picker { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .settings-shell { width: min(100% - 28px, 1280px); } .settings-header, .panels-heading, .save-bar { align-items: flex-start; flex-direction: column; } .settings-header-actions { align-items: flex-start; flex-direction: column; } .token-row { grid-template-columns: 1fr; } .group-picker { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
